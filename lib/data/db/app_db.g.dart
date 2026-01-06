@@ -36,25 +36,42 @@ class $ConversationsTable extends Conversations
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _requestIdMeta = const VerificationMeta(
-    'requestId',
+  static const VerificationMeta _sheetIdMeta = const VerificationMeta(
+    'sheetId',
   );
   @override
-  late final GeneratedColumn<String> requestId = GeneratedColumn<String>(
-    'request_id',
+  late final GeneratedColumn<String> sheetId = GeneratedColumn<String>(
+    'sheet_id',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  static const VerificationMeta _sheetUrlMeta = const VerificationMeta(
+    'sheetUrl',
+  );
   @override
-  late final GeneratedColumn<int> status = GeneratedColumn<int>(
-    'status',
+  late final GeneratedColumn<String> sheetUrl = GeneratedColumn<String>(
+    'sheet_url',
     aliasedName,
     false,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: true,
+  );
+  static const VerificationMeta _archivedMeta = const VerificationMeta(
+    'archived',
+  );
+  @override
+  late final GeneratedColumn<bool> archived = GeneratedColumn<bool>(
+    'archived',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("archived" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
@@ -83,8 +100,9 @@ class $ConversationsTable extends Conversations
     id,
     title,
     kind,
-    requestId,
-    status,
+    sheetId,
+    sheetUrl,
+    archived,
     createdAt,
     updatedAt,
   ];
@@ -121,21 +139,27 @@ class $ConversationsTable extends Conversations
     } else if (isInserting) {
       context.missing(_kindMeta);
     }
-    if (data.containsKey('request_id')) {
+    if (data.containsKey('sheet_id')) {
       context.handle(
-        _requestIdMeta,
-        requestId.isAcceptableOrUnknown(data['request_id']!, _requestIdMeta),
+        _sheetIdMeta,
+        sheetId.isAcceptableOrUnknown(data['sheet_id']!, _sheetIdMeta),
       );
     } else if (isInserting) {
-      context.missing(_requestIdMeta);
+      context.missing(_sheetIdMeta);
     }
-    if (data.containsKey('status')) {
+    if (data.containsKey('sheet_url')) {
       context.handle(
-        _statusMeta,
-        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+        _sheetUrlMeta,
+        sheetUrl.isAcceptableOrUnknown(data['sheet_url']!, _sheetUrlMeta),
       );
     } else if (isInserting) {
-      context.missing(_statusMeta);
+      context.missing(_sheetUrlMeta);
+    }
+    if (data.containsKey('archived')) {
+      context.handle(
+        _archivedMeta,
+        archived.isAcceptableOrUnknown(data['archived']!, _archivedMeta),
+      );
     }
     if (data.containsKey('created_at')) {
       context.handle(
@@ -177,15 +201,20 @@ class $ConversationsTable extends Conversations
             DriftSqlType.int,
             data['${effectivePrefix}kind'],
           )!,
-      requestId:
+      sheetId:
           attachedDatabase.typeMapping.read(
             DriftSqlType.string,
-            data['${effectivePrefix}request_id'],
+            data['${effectivePrefix}sheet_id'],
           )!,
-      status:
+      sheetUrl:
           attachedDatabase.typeMapping.read(
-            DriftSqlType.int,
-            data['${effectivePrefix}status'],
+            DriftSqlType.string,
+            data['${effectivePrefix}sheet_url'],
+          )!,
+      archived:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.bool,
+            data['${effectivePrefix}archived'],
           )!,
       createdAt:
           attachedDatabase.typeMapping.read(
@@ -210,16 +239,18 @@ class Conversation extends DataClass implements Insertable<Conversation> {
   final String id;
   final String title;
   final int kind;
-  final String requestId;
-  final int status;
+  final String sheetId;
+  final String sheetUrl;
+  final bool archived;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Conversation({
     required this.id,
     required this.title,
     required this.kind,
-    required this.requestId,
-    required this.status,
+    required this.sheetId,
+    required this.sheetUrl,
+    required this.archived,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -229,8 +260,9 @@ class Conversation extends DataClass implements Insertable<Conversation> {
     map['id'] = Variable<String>(id);
     map['title'] = Variable<String>(title);
     map['kind'] = Variable<int>(kind);
-    map['request_id'] = Variable<String>(requestId);
-    map['status'] = Variable<int>(status);
+    map['sheet_id'] = Variable<String>(sheetId);
+    map['sheet_url'] = Variable<String>(sheetUrl);
+    map['archived'] = Variable<bool>(archived);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -241,8 +273,9 @@ class Conversation extends DataClass implements Insertable<Conversation> {
       id: Value(id),
       title: Value(title),
       kind: Value(kind),
-      requestId: Value(requestId),
-      status: Value(status),
+      sheetId: Value(sheetId),
+      sheetUrl: Value(sheetUrl),
+      archived: Value(archived),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -257,8 +290,9 @@ class Conversation extends DataClass implements Insertable<Conversation> {
       id: serializer.fromJson<String>(json['id']),
       title: serializer.fromJson<String>(json['title']),
       kind: serializer.fromJson<int>(json['kind']),
-      requestId: serializer.fromJson<String>(json['requestId']),
-      status: serializer.fromJson<int>(json['status']),
+      sheetId: serializer.fromJson<String>(json['sheetId']),
+      sheetUrl: serializer.fromJson<String>(json['sheetUrl']),
+      archived: serializer.fromJson<bool>(json['archived']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -270,8 +304,9 @@ class Conversation extends DataClass implements Insertable<Conversation> {
       'id': serializer.toJson<String>(id),
       'title': serializer.toJson<String>(title),
       'kind': serializer.toJson<int>(kind),
-      'requestId': serializer.toJson<String>(requestId),
-      'status': serializer.toJson<int>(status),
+      'sheetId': serializer.toJson<String>(sheetId),
+      'sheetUrl': serializer.toJson<String>(sheetUrl),
+      'archived': serializer.toJson<bool>(archived),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -281,16 +316,18 @@ class Conversation extends DataClass implements Insertable<Conversation> {
     String? id,
     String? title,
     int? kind,
-    String? requestId,
-    int? status,
+    String? sheetId,
+    String? sheetUrl,
+    bool? archived,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Conversation(
     id: id ?? this.id,
     title: title ?? this.title,
     kind: kind ?? this.kind,
-    requestId: requestId ?? this.requestId,
-    status: status ?? this.status,
+    sheetId: sheetId ?? this.sheetId,
+    sheetUrl: sheetUrl ?? this.sheetUrl,
+    archived: archived ?? this.archived,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -299,8 +336,9 @@ class Conversation extends DataClass implements Insertable<Conversation> {
       id: data.id.present ? data.id.value : this.id,
       title: data.title.present ? data.title.value : this.title,
       kind: data.kind.present ? data.kind.value : this.kind,
-      requestId: data.requestId.present ? data.requestId.value : this.requestId,
-      status: data.status.present ? data.status.value : this.status,
+      sheetId: data.sheetId.present ? data.sheetId.value : this.sheetId,
+      sheetUrl: data.sheetUrl.present ? data.sheetUrl.value : this.sheetUrl,
+      archived: data.archived.present ? data.archived.value : this.archived,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -312,8 +350,9 @@ class Conversation extends DataClass implements Insertable<Conversation> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('kind: $kind, ')
-          ..write('requestId: $requestId, ')
-          ..write('status: $status, ')
+          ..write('sheetId: $sheetId, ')
+          ..write('sheetUrl: $sheetUrl, ')
+          ..write('archived: $archived, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -321,8 +360,16 @@ class Conversation extends DataClass implements Insertable<Conversation> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, title, kind, requestId, status, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    title,
+    kind,
+    sheetId,
+    sheetUrl,
+    archived,
+    createdAt,
+    updatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -330,8 +377,9 @@ class Conversation extends DataClass implements Insertable<Conversation> {
           other.id == this.id &&
           other.title == this.title &&
           other.kind == this.kind &&
-          other.requestId == this.requestId &&
-          other.status == this.status &&
+          other.sheetId == this.sheetId &&
+          other.sheetUrl == this.sheetUrl &&
+          other.archived == this.archived &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -340,8 +388,9 @@ class ConversationsCompanion extends UpdateCompanion<Conversation> {
   final Value<String> id;
   final Value<String> title;
   final Value<int> kind;
-  final Value<String> requestId;
-  final Value<int> status;
+  final Value<String> sheetId;
+  final Value<String> sheetUrl;
+  final Value<bool> archived;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -349,8 +398,9 @@ class ConversationsCompanion extends UpdateCompanion<Conversation> {
     this.id = const Value.absent(),
     this.title = const Value.absent(),
     this.kind = const Value.absent(),
-    this.requestId = const Value.absent(),
-    this.status = const Value.absent(),
+    this.sheetId = const Value.absent(),
+    this.sheetUrl = const Value.absent(),
+    this.archived = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -359,24 +409,26 @@ class ConversationsCompanion extends UpdateCompanion<Conversation> {
     required String id,
     required String title,
     required int kind,
-    required String requestId,
-    required int status,
+    required String sheetId,
+    required String sheetUrl,
+    this.archived = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        title = Value(title),
        kind = Value(kind),
-       requestId = Value(requestId),
-       status = Value(status),
+       sheetId = Value(sheetId),
+       sheetUrl = Value(sheetUrl),
        createdAt = Value(createdAt),
        updatedAt = Value(updatedAt);
   static Insertable<Conversation> custom({
     Expression<String>? id,
     Expression<String>? title,
     Expression<int>? kind,
-    Expression<String>? requestId,
-    Expression<int>? status,
+    Expression<String>? sheetId,
+    Expression<String>? sheetUrl,
+    Expression<bool>? archived,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -385,8 +437,9 @@ class ConversationsCompanion extends UpdateCompanion<Conversation> {
       if (id != null) 'id': id,
       if (title != null) 'title': title,
       if (kind != null) 'kind': kind,
-      if (requestId != null) 'request_id': requestId,
-      if (status != null) 'status': status,
+      if (sheetId != null) 'sheet_id': sheetId,
+      if (sheetUrl != null) 'sheet_url': sheetUrl,
+      if (archived != null) 'archived': archived,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -397,8 +450,9 @@ class ConversationsCompanion extends UpdateCompanion<Conversation> {
     Value<String>? id,
     Value<String>? title,
     Value<int>? kind,
-    Value<String>? requestId,
-    Value<int>? status,
+    Value<String>? sheetId,
+    Value<String>? sheetUrl,
+    Value<bool>? archived,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -407,8 +461,9 @@ class ConversationsCompanion extends UpdateCompanion<Conversation> {
       id: id ?? this.id,
       title: title ?? this.title,
       kind: kind ?? this.kind,
-      requestId: requestId ?? this.requestId,
-      status: status ?? this.status,
+      sheetId: sheetId ?? this.sheetId,
+      sheetUrl: sheetUrl ?? this.sheetUrl,
+      archived: archived ?? this.archived,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -427,11 +482,14 @@ class ConversationsCompanion extends UpdateCompanion<Conversation> {
     if (kind.present) {
       map['kind'] = Variable<int>(kind.value);
     }
-    if (requestId.present) {
-      map['request_id'] = Variable<String>(requestId.value);
+    if (sheetId.present) {
+      map['sheet_id'] = Variable<String>(sheetId.value);
     }
-    if (status.present) {
-      map['status'] = Variable<int>(status.value);
+    if (sheetUrl.present) {
+      map['sheet_url'] = Variable<String>(sheetUrl.value);
+    }
+    if (archived.present) {
+      map['archived'] = Variable<bool>(archived.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -451,8 +509,9 @@ class ConversationsCompanion extends UpdateCompanion<Conversation> {
           ..write('id: $id, ')
           ..write('title: $title, ')
           ..write('kind: $kind, ')
-          ..write('requestId: $requestId, ')
-          ..write('status: $status, ')
+          ..write('sheetId: $sheetId, ')
+          ..write('sheetUrl: $sheetUrl, ')
+          ..write('archived: $archived, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -472,6 +531,17 @@ class $RequestsTable extends Requests with TableInfo<$RequestsTable, Request> {
   @override
   late final GeneratedColumn<String> requestId = GeneratedColumn<String>(
     'request_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _conversationIdMeta = const VerificationMeta(
+    'conversationId',
+  );
+  @override
+  late final GeneratedColumn<String> conversationId = GeneratedColumn<String>(
+    'conversation_id',
     aliasedName,
     false,
     type: DriftSqlType.string,
@@ -551,28 +621,6 @@ class $RequestsTable extends Requests with TableInfo<$RequestsTable, Request> {
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
-  static const VerificationMeta _sheetIdMeta = const VerificationMeta(
-    'sheetId',
-  );
-  @override
-  late final GeneratedColumn<String> sheetId = GeneratedColumn<String>(
-    'sheet_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _sheetUrlMeta = const VerificationMeta(
-    'sheetUrl',
-  );
-  @override
-  late final GeneratedColumn<String> sheetUrl = GeneratedColumn<String>(
-    'sheet_url',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
   static const VerificationMeta _gmailThreadIdMeta = const VerificationMeta(
     'gmailThreadId',
   );
@@ -595,9 +643,48 @@ class $RequestsTable extends Requests with TableInfo<$RequestsTable, Request> {
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _templateRequestIdMeta = const VerificationMeta(
+    'templateRequestId',
+  );
+  @override
+  late final GeneratedColumn<String> templateRequestId =
+      GeneratedColumn<String>(
+        'template_request_id',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _iterationNumberMeta = const VerificationMeta(
+    'iterationNumber',
+  );
+  @override
+  late final GeneratedColumn<int> iterationNumber = GeneratedColumn<int>(
+    'iteration_number',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isTemplateMeta = const VerificationMeta(
+    'isTemplate',
+  );
+  @override
+  late final GeneratedColumn<bool> isTemplate = GeneratedColumn<bool>(
+    'is_template',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_template" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     requestId,
+    conversationId,
     title,
     description,
     ownerEmail,
@@ -605,10 +692,11 @@ class $RequestsTable extends Requests with TableInfo<$RequestsTable, Request> {
     schemaJson,
     recipientsJson,
     replyFormat,
-    sheetId,
-    sheetUrl,
     gmailThreadId,
     lastIngestAt,
+    templateRequestId,
+    iterationNumber,
+    isTemplate,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -629,6 +717,17 @@ class $RequestsTable extends Requests with TableInfo<$RequestsTable, Request> {
       );
     } else if (isInserting) {
       context.missing(_requestIdMeta);
+    }
+    if (data.containsKey('conversation_id')) {
+      context.handle(
+        _conversationIdMeta,
+        conversationId.isAcceptableOrUnknown(
+          data['conversation_id']!,
+          _conversationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_conversationIdMeta);
     }
     if (data.containsKey('title')) {
       context.handle(
@@ -691,22 +790,6 @@ class $RequestsTable extends Requests with TableInfo<$RequestsTable, Request> {
         ),
       );
     }
-    if (data.containsKey('sheet_id')) {
-      context.handle(
-        _sheetIdMeta,
-        sheetId.isAcceptableOrUnknown(data['sheet_id']!, _sheetIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_sheetIdMeta);
-    }
-    if (data.containsKey('sheet_url')) {
-      context.handle(
-        _sheetUrlMeta,
-        sheetUrl.isAcceptableOrUnknown(data['sheet_url']!, _sheetUrlMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_sheetUrlMeta);
-    }
     if (data.containsKey('gmail_thread_id')) {
       context.handle(
         _gmailThreadIdMeta,
@@ -725,6 +808,30 @@ class $RequestsTable extends Requests with TableInfo<$RequestsTable, Request> {
         ),
       );
     }
+    if (data.containsKey('template_request_id')) {
+      context.handle(
+        _templateRequestIdMeta,
+        templateRequestId.isAcceptableOrUnknown(
+          data['template_request_id']!,
+          _templateRequestIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('iteration_number')) {
+      context.handle(
+        _iterationNumberMeta,
+        iterationNumber.isAcceptableOrUnknown(
+          data['iteration_number']!,
+          _iterationNumberMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_template')) {
+      context.handle(
+        _isTemplateMeta,
+        isTemplate.isAcceptableOrUnknown(data['is_template']!, _isTemplateMeta),
+      );
+    }
     return context;
   }
 
@@ -738,6 +845,11 @@ class $RequestsTable extends Requests with TableInfo<$RequestsTable, Request> {
           attachedDatabase.typeMapping.read(
             DriftSqlType.string,
             data['${effectivePrefix}request_id'],
+          )!,
+      conversationId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}conversation_id'],
           )!,
       title:
           attachedDatabase.typeMapping.read(
@@ -773,16 +885,6 @@ class $RequestsTable extends Requests with TableInfo<$RequestsTable, Request> {
             DriftSqlType.int,
             data['${effectivePrefix}reply_format'],
           )!,
-      sheetId:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}sheet_id'],
-          )!,
-      sheetUrl:
-          attachedDatabase.typeMapping.read(
-            DriftSqlType.string,
-            data['${effectivePrefix}sheet_url'],
-          )!,
       gmailThreadId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}gmail_thread_id'],
@@ -791,6 +893,19 @@ class $RequestsTable extends Requests with TableInfo<$RequestsTable, Request> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_ingest_at'],
       ),
+      templateRequestId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}template_request_id'],
+      ),
+      iterationNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}iteration_number'],
+      ),
+      isTemplate:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.bool,
+            data['${effectivePrefix}is_template'],
+          )!,
     );
   }
 
@@ -802,6 +917,7 @@ class $RequestsTable extends Requests with TableInfo<$RequestsTable, Request> {
 
 class Request extends DataClass implements Insertable<Request> {
   final String requestId;
+  final String conversationId;
   final String title;
   final String? description;
   final String ownerEmail;
@@ -809,12 +925,14 @@ class Request extends DataClass implements Insertable<Request> {
   final String schemaJson;
   final String recipientsJson;
   final int replyFormat;
-  final String sheetId;
-  final String sheetUrl;
   final String? gmailThreadId;
   final DateTime? lastIngestAt;
+  final String? templateRequestId;
+  final int? iterationNumber;
+  final bool isTemplate;
   const Request({
     required this.requestId,
+    required this.conversationId,
     required this.title,
     this.description,
     required this.ownerEmail,
@@ -822,15 +940,17 @@ class Request extends DataClass implements Insertable<Request> {
     required this.schemaJson,
     required this.recipientsJson,
     required this.replyFormat,
-    required this.sheetId,
-    required this.sheetUrl,
     this.gmailThreadId,
     this.lastIngestAt,
+    this.templateRequestId,
+    this.iterationNumber,
+    required this.isTemplate,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['request_id'] = Variable<String>(requestId);
+    map['conversation_id'] = Variable<String>(conversationId);
     map['title'] = Variable<String>(title);
     if (!nullToAbsent || description != null) {
       map['description'] = Variable<String>(description);
@@ -840,20 +960,26 @@ class Request extends DataClass implements Insertable<Request> {
     map['schema_json'] = Variable<String>(schemaJson);
     map['recipients_json'] = Variable<String>(recipientsJson);
     map['reply_format'] = Variable<int>(replyFormat);
-    map['sheet_id'] = Variable<String>(sheetId);
-    map['sheet_url'] = Variable<String>(sheetUrl);
     if (!nullToAbsent || gmailThreadId != null) {
       map['gmail_thread_id'] = Variable<String>(gmailThreadId);
     }
     if (!nullToAbsent || lastIngestAt != null) {
       map['last_ingest_at'] = Variable<DateTime>(lastIngestAt);
     }
+    if (!nullToAbsent || templateRequestId != null) {
+      map['template_request_id'] = Variable<String>(templateRequestId);
+    }
+    if (!nullToAbsent || iterationNumber != null) {
+      map['iteration_number'] = Variable<int>(iterationNumber);
+    }
+    map['is_template'] = Variable<bool>(isTemplate);
     return map;
   }
 
   RequestsCompanion toCompanion(bool nullToAbsent) {
     return RequestsCompanion(
       requestId: Value(requestId),
+      conversationId: Value(conversationId),
       title: Value(title),
       description:
           description == null && nullToAbsent
@@ -864,8 +990,6 @@ class Request extends DataClass implements Insertable<Request> {
       schemaJson: Value(schemaJson),
       recipientsJson: Value(recipientsJson),
       replyFormat: Value(replyFormat),
-      sheetId: Value(sheetId),
-      sheetUrl: Value(sheetUrl),
       gmailThreadId:
           gmailThreadId == null && nullToAbsent
               ? const Value.absent()
@@ -874,6 +998,15 @@ class Request extends DataClass implements Insertable<Request> {
           lastIngestAt == null && nullToAbsent
               ? const Value.absent()
               : Value(lastIngestAt),
+      templateRequestId:
+          templateRequestId == null && nullToAbsent
+              ? const Value.absent()
+              : Value(templateRequestId),
+      iterationNumber:
+          iterationNumber == null && nullToAbsent
+              ? const Value.absent()
+              : Value(iterationNumber),
+      isTemplate: Value(isTemplate),
     );
   }
 
@@ -884,6 +1017,7 @@ class Request extends DataClass implements Insertable<Request> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Request(
       requestId: serializer.fromJson<String>(json['requestId']),
+      conversationId: serializer.fromJson<String>(json['conversationId']),
       title: serializer.fromJson<String>(json['title']),
       description: serializer.fromJson<String?>(json['description']),
       ownerEmail: serializer.fromJson<String>(json['ownerEmail']),
@@ -891,10 +1025,13 @@ class Request extends DataClass implements Insertable<Request> {
       schemaJson: serializer.fromJson<String>(json['schemaJson']),
       recipientsJson: serializer.fromJson<String>(json['recipientsJson']),
       replyFormat: serializer.fromJson<int>(json['replyFormat']),
-      sheetId: serializer.fromJson<String>(json['sheetId']),
-      sheetUrl: serializer.fromJson<String>(json['sheetUrl']),
       gmailThreadId: serializer.fromJson<String?>(json['gmailThreadId']),
       lastIngestAt: serializer.fromJson<DateTime?>(json['lastIngestAt']),
+      templateRequestId: serializer.fromJson<String?>(
+        json['templateRequestId'],
+      ),
+      iterationNumber: serializer.fromJson<int?>(json['iterationNumber']),
+      isTemplate: serializer.fromJson<bool>(json['isTemplate']),
     );
   }
   @override
@@ -902,6 +1039,7 @@ class Request extends DataClass implements Insertable<Request> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'requestId': serializer.toJson<String>(requestId),
+      'conversationId': serializer.toJson<String>(conversationId),
       'title': serializer.toJson<String>(title),
       'description': serializer.toJson<String?>(description),
       'ownerEmail': serializer.toJson<String>(ownerEmail),
@@ -909,15 +1047,17 @@ class Request extends DataClass implements Insertable<Request> {
       'schemaJson': serializer.toJson<String>(schemaJson),
       'recipientsJson': serializer.toJson<String>(recipientsJson),
       'replyFormat': serializer.toJson<int>(replyFormat),
-      'sheetId': serializer.toJson<String>(sheetId),
-      'sheetUrl': serializer.toJson<String>(sheetUrl),
       'gmailThreadId': serializer.toJson<String?>(gmailThreadId),
       'lastIngestAt': serializer.toJson<DateTime?>(lastIngestAt),
+      'templateRequestId': serializer.toJson<String?>(templateRequestId),
+      'iterationNumber': serializer.toJson<int?>(iterationNumber),
+      'isTemplate': serializer.toJson<bool>(isTemplate),
     };
   }
 
   Request copyWith({
     String? requestId,
+    String? conversationId,
     String? title,
     Value<String?> description = const Value.absent(),
     String? ownerEmail,
@@ -925,12 +1065,14 @@ class Request extends DataClass implements Insertable<Request> {
     String? schemaJson,
     String? recipientsJson,
     int? replyFormat,
-    String? sheetId,
-    String? sheetUrl,
     Value<String?> gmailThreadId = const Value.absent(),
     Value<DateTime?> lastIngestAt = const Value.absent(),
+    Value<String?> templateRequestId = const Value.absent(),
+    Value<int?> iterationNumber = const Value.absent(),
+    bool? isTemplate,
   }) => Request(
     requestId: requestId ?? this.requestId,
+    conversationId: conversationId ?? this.conversationId,
     title: title ?? this.title,
     description: description.present ? description.value : this.description,
     ownerEmail: ownerEmail ?? this.ownerEmail,
@@ -938,15 +1080,24 @@ class Request extends DataClass implements Insertable<Request> {
     schemaJson: schemaJson ?? this.schemaJson,
     recipientsJson: recipientsJson ?? this.recipientsJson,
     replyFormat: replyFormat ?? this.replyFormat,
-    sheetId: sheetId ?? this.sheetId,
-    sheetUrl: sheetUrl ?? this.sheetUrl,
     gmailThreadId:
         gmailThreadId.present ? gmailThreadId.value : this.gmailThreadId,
     lastIngestAt: lastIngestAt.present ? lastIngestAt.value : this.lastIngestAt,
+    templateRequestId:
+        templateRequestId.present
+            ? templateRequestId.value
+            : this.templateRequestId,
+    iterationNumber:
+        iterationNumber.present ? iterationNumber.value : this.iterationNumber,
+    isTemplate: isTemplate ?? this.isTemplate,
   );
   Request copyWithCompanion(RequestsCompanion data) {
     return Request(
       requestId: data.requestId.present ? data.requestId.value : this.requestId,
+      conversationId:
+          data.conversationId.present
+              ? data.conversationId.value
+              : this.conversationId,
       title: data.title.present ? data.title.value : this.title,
       description:
           data.description.present ? data.description.value : this.description,
@@ -961,8 +1112,6 @@ class Request extends DataClass implements Insertable<Request> {
               : this.recipientsJson,
       replyFormat:
           data.replyFormat.present ? data.replyFormat.value : this.replyFormat,
-      sheetId: data.sheetId.present ? data.sheetId.value : this.sheetId,
-      sheetUrl: data.sheetUrl.present ? data.sheetUrl.value : this.sheetUrl,
       gmailThreadId:
           data.gmailThreadId.present
               ? data.gmailThreadId.value
@@ -971,6 +1120,16 @@ class Request extends DataClass implements Insertable<Request> {
           data.lastIngestAt.present
               ? data.lastIngestAt.value
               : this.lastIngestAt,
+      templateRequestId:
+          data.templateRequestId.present
+              ? data.templateRequestId.value
+              : this.templateRequestId,
+      iterationNumber:
+          data.iterationNumber.present
+              ? data.iterationNumber.value
+              : this.iterationNumber,
+      isTemplate:
+          data.isTemplate.present ? data.isTemplate.value : this.isTemplate,
     );
   }
 
@@ -978,6 +1137,7 @@ class Request extends DataClass implements Insertable<Request> {
   String toString() {
     return (StringBuffer('Request(')
           ..write('requestId: $requestId, ')
+          ..write('conversationId: $conversationId, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
           ..write('ownerEmail: $ownerEmail, ')
@@ -985,10 +1145,11 @@ class Request extends DataClass implements Insertable<Request> {
           ..write('schemaJson: $schemaJson, ')
           ..write('recipientsJson: $recipientsJson, ')
           ..write('replyFormat: $replyFormat, ')
-          ..write('sheetId: $sheetId, ')
-          ..write('sheetUrl: $sheetUrl, ')
           ..write('gmailThreadId: $gmailThreadId, ')
-          ..write('lastIngestAt: $lastIngestAt')
+          ..write('lastIngestAt: $lastIngestAt, ')
+          ..write('templateRequestId: $templateRequestId, ')
+          ..write('iterationNumber: $iterationNumber, ')
+          ..write('isTemplate: $isTemplate')
           ..write(')'))
         .toString();
   }
@@ -996,6 +1157,7 @@ class Request extends DataClass implements Insertable<Request> {
   @override
   int get hashCode => Object.hash(
     requestId,
+    conversationId,
     title,
     description,
     ownerEmail,
@@ -1003,16 +1165,18 @@ class Request extends DataClass implements Insertable<Request> {
     schemaJson,
     recipientsJson,
     replyFormat,
-    sheetId,
-    sheetUrl,
     gmailThreadId,
     lastIngestAt,
+    templateRequestId,
+    iterationNumber,
+    isTemplate,
   );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Request &&
           other.requestId == this.requestId &&
+          other.conversationId == this.conversationId &&
           other.title == this.title &&
           other.description == this.description &&
           other.ownerEmail == this.ownerEmail &&
@@ -1020,14 +1184,16 @@ class Request extends DataClass implements Insertable<Request> {
           other.schemaJson == this.schemaJson &&
           other.recipientsJson == this.recipientsJson &&
           other.replyFormat == this.replyFormat &&
-          other.sheetId == this.sheetId &&
-          other.sheetUrl == this.sheetUrl &&
           other.gmailThreadId == this.gmailThreadId &&
-          other.lastIngestAt == this.lastIngestAt);
+          other.lastIngestAt == this.lastIngestAt &&
+          other.templateRequestId == this.templateRequestId &&
+          other.iterationNumber == this.iterationNumber &&
+          other.isTemplate == this.isTemplate);
 }
 
 class RequestsCompanion extends UpdateCompanion<Request> {
   final Value<String> requestId;
+  final Value<String> conversationId;
   final Value<String> title;
   final Value<String?> description;
   final Value<String> ownerEmail;
@@ -1035,13 +1201,15 @@ class RequestsCompanion extends UpdateCompanion<Request> {
   final Value<String> schemaJson;
   final Value<String> recipientsJson;
   final Value<int> replyFormat;
-  final Value<String> sheetId;
-  final Value<String> sheetUrl;
   final Value<String?> gmailThreadId;
   final Value<DateTime?> lastIngestAt;
+  final Value<String?> templateRequestId;
+  final Value<int?> iterationNumber;
+  final Value<bool> isTemplate;
   final Value<int> rowid;
   const RequestsCompanion({
     this.requestId = const Value.absent(),
+    this.conversationId = const Value.absent(),
     this.title = const Value.absent(),
     this.description = const Value.absent(),
     this.ownerEmail = const Value.absent(),
@@ -1049,14 +1217,16 @@ class RequestsCompanion extends UpdateCompanion<Request> {
     this.schemaJson = const Value.absent(),
     this.recipientsJson = const Value.absent(),
     this.replyFormat = const Value.absent(),
-    this.sheetId = const Value.absent(),
-    this.sheetUrl = const Value.absent(),
     this.gmailThreadId = const Value.absent(),
     this.lastIngestAt = const Value.absent(),
+    this.templateRequestId = const Value.absent(),
+    this.iterationNumber = const Value.absent(),
+    this.isTemplate = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   RequestsCompanion.insert({
     required String requestId,
+    required String conversationId,
     required String title,
     this.description = const Value.absent(),
     required String ownerEmail,
@@ -1064,21 +1234,22 @@ class RequestsCompanion extends UpdateCompanion<Request> {
     required String schemaJson,
     required String recipientsJson,
     this.replyFormat = const Value.absent(),
-    required String sheetId,
-    required String sheetUrl,
     this.gmailThreadId = const Value.absent(),
     this.lastIngestAt = const Value.absent(),
+    this.templateRequestId = const Value.absent(),
+    this.iterationNumber = const Value.absent(),
+    this.isTemplate = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : requestId = Value(requestId),
+       conversationId = Value(conversationId),
        title = Value(title),
        ownerEmail = Value(ownerEmail),
        dueAt = Value(dueAt),
        schemaJson = Value(schemaJson),
-       recipientsJson = Value(recipientsJson),
-       sheetId = Value(sheetId),
-       sheetUrl = Value(sheetUrl);
+       recipientsJson = Value(recipientsJson);
   static Insertable<Request> custom({
     Expression<String>? requestId,
+    Expression<String>? conversationId,
     Expression<String>? title,
     Expression<String>? description,
     Expression<String>? ownerEmail,
@@ -1086,14 +1257,16 @@ class RequestsCompanion extends UpdateCompanion<Request> {
     Expression<String>? schemaJson,
     Expression<String>? recipientsJson,
     Expression<int>? replyFormat,
-    Expression<String>? sheetId,
-    Expression<String>? sheetUrl,
     Expression<String>? gmailThreadId,
     Expression<DateTime>? lastIngestAt,
+    Expression<String>? templateRequestId,
+    Expression<int>? iterationNumber,
+    Expression<bool>? isTemplate,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (requestId != null) 'request_id': requestId,
+      if (conversationId != null) 'conversation_id': conversationId,
       if (title != null) 'title': title,
       if (description != null) 'description': description,
       if (ownerEmail != null) 'owner_email': ownerEmail,
@@ -1101,16 +1274,18 @@ class RequestsCompanion extends UpdateCompanion<Request> {
       if (schemaJson != null) 'schema_json': schemaJson,
       if (recipientsJson != null) 'recipients_json': recipientsJson,
       if (replyFormat != null) 'reply_format': replyFormat,
-      if (sheetId != null) 'sheet_id': sheetId,
-      if (sheetUrl != null) 'sheet_url': sheetUrl,
       if (gmailThreadId != null) 'gmail_thread_id': gmailThreadId,
       if (lastIngestAt != null) 'last_ingest_at': lastIngestAt,
+      if (templateRequestId != null) 'template_request_id': templateRequestId,
+      if (iterationNumber != null) 'iteration_number': iterationNumber,
+      if (isTemplate != null) 'is_template': isTemplate,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
   RequestsCompanion copyWith({
     Value<String>? requestId,
+    Value<String>? conversationId,
     Value<String>? title,
     Value<String?>? description,
     Value<String>? ownerEmail,
@@ -1118,14 +1293,16 @@ class RequestsCompanion extends UpdateCompanion<Request> {
     Value<String>? schemaJson,
     Value<String>? recipientsJson,
     Value<int>? replyFormat,
-    Value<String>? sheetId,
-    Value<String>? sheetUrl,
     Value<String?>? gmailThreadId,
     Value<DateTime?>? lastIngestAt,
+    Value<String?>? templateRequestId,
+    Value<int?>? iterationNumber,
+    Value<bool>? isTemplate,
     Value<int>? rowid,
   }) {
     return RequestsCompanion(
       requestId: requestId ?? this.requestId,
+      conversationId: conversationId ?? this.conversationId,
       title: title ?? this.title,
       description: description ?? this.description,
       ownerEmail: ownerEmail ?? this.ownerEmail,
@@ -1133,10 +1310,11 @@ class RequestsCompanion extends UpdateCompanion<Request> {
       schemaJson: schemaJson ?? this.schemaJson,
       recipientsJson: recipientsJson ?? this.recipientsJson,
       replyFormat: replyFormat ?? this.replyFormat,
-      sheetId: sheetId ?? this.sheetId,
-      sheetUrl: sheetUrl ?? this.sheetUrl,
       gmailThreadId: gmailThreadId ?? this.gmailThreadId,
       lastIngestAt: lastIngestAt ?? this.lastIngestAt,
+      templateRequestId: templateRequestId ?? this.templateRequestId,
+      iterationNumber: iterationNumber ?? this.iterationNumber,
+      isTemplate: isTemplate ?? this.isTemplate,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1146,6 +1324,9 @@ class RequestsCompanion extends UpdateCompanion<Request> {
     final map = <String, Expression>{};
     if (requestId.present) {
       map['request_id'] = Variable<String>(requestId.value);
+    }
+    if (conversationId.present) {
+      map['conversation_id'] = Variable<String>(conversationId.value);
     }
     if (title.present) {
       map['title'] = Variable<String>(title.value);
@@ -1168,17 +1349,20 @@ class RequestsCompanion extends UpdateCompanion<Request> {
     if (replyFormat.present) {
       map['reply_format'] = Variable<int>(replyFormat.value);
     }
-    if (sheetId.present) {
-      map['sheet_id'] = Variable<String>(sheetId.value);
-    }
-    if (sheetUrl.present) {
-      map['sheet_url'] = Variable<String>(sheetUrl.value);
-    }
     if (gmailThreadId.present) {
       map['gmail_thread_id'] = Variable<String>(gmailThreadId.value);
     }
     if (lastIngestAt.present) {
       map['last_ingest_at'] = Variable<DateTime>(lastIngestAt.value);
+    }
+    if (templateRequestId.present) {
+      map['template_request_id'] = Variable<String>(templateRequestId.value);
+    }
+    if (iterationNumber.present) {
+      map['iteration_number'] = Variable<int>(iterationNumber.value);
+    }
+    if (isTemplate.present) {
+      map['is_template'] = Variable<bool>(isTemplate.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -1190,6 +1374,7 @@ class RequestsCompanion extends UpdateCompanion<Request> {
   String toString() {
     return (StringBuffer('RequestsCompanion(')
           ..write('requestId: $requestId, ')
+          ..write('conversationId: $conversationId, ')
           ..write('title: $title, ')
           ..write('description: $description, ')
           ..write('ownerEmail: $ownerEmail, ')
@@ -1197,10 +1382,11 @@ class RequestsCompanion extends UpdateCompanion<Request> {
           ..write('schemaJson: $schemaJson, ')
           ..write('recipientsJson: $recipientsJson, ')
           ..write('replyFormat: $replyFormat, ')
-          ..write('sheetId: $sheetId, ')
-          ..write('sheetUrl: $sheetUrl, ')
           ..write('gmailThreadId: $gmailThreadId, ')
           ..write('lastIngestAt: $lastIngestAt, ')
+          ..write('templateRequestId: $templateRequestId, ')
+          ..write('iterationNumber: $iterationNumber, ')
+          ..write('isTemplate: $isTemplate, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -2352,6 +2538,269 @@ class ProcessedMessagesCompanion extends UpdateCompanion<ProcessedMessage> {
   }
 }
 
+class $CredentialsTable extends Credentials
+    with TableInfo<$CredentialsTable, Credential> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CredentialsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _keyMeta = const VerificationMeta('key');
+  @override
+  late final GeneratedColumn<String> key = GeneratedColumn<String>(
+    'key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+    'value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [key, value, updatedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'credentials';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Credential> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('key')) {
+      context.handle(
+        _keyMeta,
+        key.isAcceptableOrUnknown(data['key']!, _keyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_keyMeta);
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {key};
+  @override
+  Credential map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Credential(
+      key:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}key'],
+          )!,
+      value:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}value'],
+          )!,
+      updatedAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}updated_at'],
+          )!,
+    );
+  }
+
+  @override
+  $CredentialsTable createAlias(String alias) {
+    return $CredentialsTable(attachedDatabase, alias);
+  }
+}
+
+class Credential extends DataClass implements Insertable<Credential> {
+  final String key;
+  final String value;
+  final DateTime updatedAt;
+  const Credential({
+    required this.key,
+    required this.value,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['key'] = Variable<String>(key);
+    map['value'] = Variable<String>(value);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  CredentialsCompanion toCompanion(bool nullToAbsent) {
+    return CredentialsCompanion(
+      key: Value(key),
+      value: Value(value),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory Credential.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return Credential(
+      key: serializer.fromJson<String>(json['key']),
+      value: serializer.fromJson<String>(json['value']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'key': serializer.toJson<String>(key),
+      'value': serializer.toJson<String>(value),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  Credential copyWith({String? key, String? value, DateTime? updatedAt}) =>
+      Credential(
+        key: key ?? this.key,
+        value: value ?? this.value,
+        updatedAt: updatedAt ?? this.updatedAt,
+      );
+  Credential copyWithCompanion(CredentialsCompanion data) {
+    return Credential(
+      key: data.key.present ? data.key.value : this.key,
+      value: data.value.present ? data.value.value : this.value,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('Credential(')
+          ..write('key: $key, ')
+          ..write('value: $value, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(key, value, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is Credential &&
+          other.key == this.key &&
+          other.value == this.value &&
+          other.updatedAt == this.updatedAt);
+}
+
+class CredentialsCompanion extends UpdateCompanion<Credential> {
+  final Value<String> key;
+  final Value<String> value;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const CredentialsCompanion({
+    this.key = const Value.absent(),
+    this.value = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CredentialsCompanion.insert({
+    required String key,
+    required String value,
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : key = Value(key),
+       value = Value(value);
+  static Insertable<Credential> custom({
+    Expression<String>? key,
+    Expression<String>? value,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (key != null) 'key': key,
+      if (value != null) 'value': value,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CredentialsCompanion copyWith({
+    Value<String>? key,
+    Value<String>? value,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return CredentialsCompanion(
+      key: key ?? this.key,
+      value: value ?? this.value,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (key.present) {
+      map['key'] = Variable<String>(key.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CredentialsCompanion(')
+          ..write('key: $key, ')
+          ..write('value: $value, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2362,6 +2811,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ActivityLogTable activityLog = $ActivityLogTable(this);
   late final $ProcessedMessagesTable processedMessages =
       $ProcessedMessagesTable(this);
+  late final $CredentialsTable credentials = $CredentialsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2372,6 +2822,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     recipientStatusTable,
     activityLog,
     processedMessages,
+    credentials,
   ];
 }
 
@@ -2380,8 +2831,9 @@ typedef $$ConversationsTableCreateCompanionBuilder =
       required String id,
       required String title,
       required int kind,
-      required String requestId,
-      required int status,
+      required String sheetId,
+      required String sheetUrl,
+      Value<bool> archived,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<int> rowid,
@@ -2391,8 +2843,9 @@ typedef $$ConversationsTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> title,
       Value<int> kind,
-      Value<String> requestId,
-      Value<int> status,
+      Value<String> sheetId,
+      Value<String> sheetUrl,
+      Value<bool> archived,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -2422,13 +2875,18 @@ class $$ConversationsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get requestId => $composableBuilder(
-    column: $table.requestId,
+  ColumnFilters<String> get sheetId => $composableBuilder(
+    column: $table.sheetId,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get status => $composableBuilder(
-    column: $table.status,
+  ColumnFilters<String> get sheetUrl => $composableBuilder(
+    column: $table.sheetUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get archived => $composableBuilder(
+    column: $table.archived,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2467,13 +2925,18 @@ class $$ConversationsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get requestId => $composableBuilder(
-    column: $table.requestId,
+  ColumnOrderings<String> get sheetId => $composableBuilder(
+    column: $table.sheetId,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get status => $composableBuilder(
-    column: $table.status,
+  ColumnOrderings<String> get sheetUrl => $composableBuilder(
+    column: $table.sheetUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get archived => $composableBuilder(
+    column: $table.archived,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2506,11 +2969,14 @@ class $$ConversationsTableAnnotationComposer
   GeneratedColumn<int> get kind =>
       $composableBuilder(column: $table.kind, builder: (column) => column);
 
-  GeneratedColumn<String> get requestId =>
-      $composableBuilder(column: $table.requestId, builder: (column) => column);
+  GeneratedColumn<String> get sheetId =>
+      $composableBuilder(column: $table.sheetId, builder: (column) => column);
 
-  GeneratedColumn<int> get status =>
-      $composableBuilder(column: $table.status, builder: (column) => column);
+  GeneratedColumn<String> get sheetUrl =>
+      $composableBuilder(column: $table.sheetUrl, builder: (column) => column);
+
+  GeneratedColumn<bool> get archived =>
+      $composableBuilder(column: $table.archived, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -2557,8 +3023,9 @@ class $$ConversationsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<int> kind = const Value.absent(),
-                Value<String> requestId = const Value.absent(),
-                Value<int> status = const Value.absent(),
+                Value<String> sheetId = const Value.absent(),
+                Value<String> sheetUrl = const Value.absent(),
+                Value<bool> archived = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -2566,8 +3033,9 @@ class $$ConversationsTableTableManager
                 id: id,
                 title: title,
                 kind: kind,
-                requestId: requestId,
-                status: status,
+                sheetId: sheetId,
+                sheetUrl: sheetUrl,
+                archived: archived,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -2577,8 +3045,9 @@ class $$ConversationsTableTableManager
                 required String id,
                 required String title,
                 required int kind,
-                required String requestId,
-                required int status,
+                required String sheetId,
+                required String sheetUrl,
+                Value<bool> archived = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -2586,8 +3055,9 @@ class $$ConversationsTableTableManager
                 id: id,
                 title: title,
                 kind: kind,
-                requestId: requestId,
-                status: status,
+                sheetId: sheetId,
+                sheetUrl: sheetUrl,
+                archived: archived,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -2627,6 +3097,7 @@ typedef $$ConversationsTableProcessedTableManager =
 typedef $$RequestsTableCreateCompanionBuilder =
     RequestsCompanion Function({
       required String requestId,
+      required String conversationId,
       required String title,
       Value<String?> description,
       required String ownerEmail,
@@ -2634,15 +3105,17 @@ typedef $$RequestsTableCreateCompanionBuilder =
       required String schemaJson,
       required String recipientsJson,
       Value<int> replyFormat,
-      required String sheetId,
-      required String sheetUrl,
       Value<String?> gmailThreadId,
       Value<DateTime?> lastIngestAt,
+      Value<String?> templateRequestId,
+      Value<int?> iterationNumber,
+      Value<bool> isTemplate,
       Value<int> rowid,
     });
 typedef $$RequestsTableUpdateCompanionBuilder =
     RequestsCompanion Function({
       Value<String> requestId,
+      Value<String> conversationId,
       Value<String> title,
       Value<String?> description,
       Value<String> ownerEmail,
@@ -2650,10 +3123,11 @@ typedef $$RequestsTableUpdateCompanionBuilder =
       Value<String> schemaJson,
       Value<String> recipientsJson,
       Value<int> replyFormat,
-      Value<String> sheetId,
-      Value<String> sheetUrl,
       Value<String?> gmailThreadId,
       Value<DateTime?> lastIngestAt,
+      Value<String?> templateRequestId,
+      Value<int?> iterationNumber,
+      Value<bool> isTemplate,
       Value<int> rowid,
     });
 
@@ -2668,6 +3142,11 @@ class $$RequestsTableFilterComposer
   });
   ColumnFilters<String> get requestId => $composableBuilder(
     column: $table.requestId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2706,16 +3185,6 @@ class $$RequestsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get sheetId => $composableBuilder(
-    column: $table.sheetId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get sheetUrl => $composableBuilder(
-    column: $table.sheetUrl,
-    builder: (column) => ColumnFilters(column),
-  );
-
   ColumnFilters<String> get gmailThreadId => $composableBuilder(
     column: $table.gmailThreadId,
     builder: (column) => ColumnFilters(column),
@@ -2723,6 +3192,21 @@ class $$RequestsTableFilterComposer
 
   ColumnFilters<DateTime> get lastIngestAt => $composableBuilder(
     column: $table.lastIngestAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get templateRequestId => $composableBuilder(
+    column: $table.templateRequestId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get iterationNumber => $composableBuilder(
+    column: $table.iterationNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isTemplate => $composableBuilder(
+    column: $table.isTemplate,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2738,6 +3222,11 @@ class $$RequestsTableOrderingComposer
   });
   ColumnOrderings<String> get requestId => $composableBuilder(
     column: $table.requestId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2776,16 +3265,6 @@ class $$RequestsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get sheetId => $composableBuilder(
-    column: $table.sheetId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get sheetUrl => $composableBuilder(
-    column: $table.sheetUrl,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get gmailThreadId => $composableBuilder(
     column: $table.gmailThreadId,
     builder: (column) => ColumnOrderings(column),
@@ -2793,6 +3272,21 @@ class $$RequestsTableOrderingComposer
 
   ColumnOrderings<DateTime> get lastIngestAt => $composableBuilder(
     column: $table.lastIngestAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get templateRequestId => $composableBuilder(
+    column: $table.templateRequestId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get iterationNumber => $composableBuilder(
+    column: $table.iterationNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isTemplate => $composableBuilder(
+    column: $table.isTemplate,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -2808,6 +3302,11 @@ class $$RequestsTableAnnotationComposer
   });
   GeneratedColumn<String> get requestId =>
       $composableBuilder(column: $table.requestId, builder: (column) => column);
+
+  GeneratedColumn<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
@@ -2840,12 +3339,6 @@ class $$RequestsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get sheetId =>
-      $composableBuilder(column: $table.sheetId, builder: (column) => column);
-
-  GeneratedColumn<String> get sheetUrl =>
-      $composableBuilder(column: $table.sheetUrl, builder: (column) => column);
-
   GeneratedColumn<String> get gmailThreadId => $composableBuilder(
     column: $table.gmailThreadId,
     builder: (column) => column,
@@ -2853,6 +3346,21 @@ class $$RequestsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get lastIngestAt => $composableBuilder(
     column: $table.lastIngestAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get templateRequestId => $composableBuilder(
+    column: $table.templateRequestId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get iterationNumber => $composableBuilder(
+    column: $table.iterationNumber,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isTemplate => $composableBuilder(
+    column: $table.isTemplate,
     builder: (column) => column,
   );
 }
@@ -2886,6 +3394,7 @@ class $$RequestsTableTableManager
           updateCompanionCallback:
               ({
                 Value<String> requestId = const Value.absent(),
+                Value<String> conversationId = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String?> description = const Value.absent(),
                 Value<String> ownerEmail = const Value.absent(),
@@ -2893,13 +3402,15 @@ class $$RequestsTableTableManager
                 Value<String> schemaJson = const Value.absent(),
                 Value<String> recipientsJson = const Value.absent(),
                 Value<int> replyFormat = const Value.absent(),
-                Value<String> sheetId = const Value.absent(),
-                Value<String> sheetUrl = const Value.absent(),
                 Value<String?> gmailThreadId = const Value.absent(),
                 Value<DateTime?> lastIngestAt = const Value.absent(),
+                Value<String?> templateRequestId = const Value.absent(),
+                Value<int?> iterationNumber = const Value.absent(),
+                Value<bool> isTemplate = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RequestsCompanion(
                 requestId: requestId,
+                conversationId: conversationId,
                 title: title,
                 description: description,
                 ownerEmail: ownerEmail,
@@ -2907,15 +3418,17 @@ class $$RequestsTableTableManager
                 schemaJson: schemaJson,
                 recipientsJson: recipientsJson,
                 replyFormat: replyFormat,
-                sheetId: sheetId,
-                sheetUrl: sheetUrl,
                 gmailThreadId: gmailThreadId,
                 lastIngestAt: lastIngestAt,
+                templateRequestId: templateRequestId,
+                iterationNumber: iterationNumber,
+                isTemplate: isTemplate,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
                 required String requestId,
+                required String conversationId,
                 required String title,
                 Value<String?> description = const Value.absent(),
                 required String ownerEmail,
@@ -2923,13 +3436,15 @@ class $$RequestsTableTableManager
                 required String schemaJson,
                 required String recipientsJson,
                 Value<int> replyFormat = const Value.absent(),
-                required String sheetId,
-                required String sheetUrl,
                 Value<String?> gmailThreadId = const Value.absent(),
                 Value<DateTime?> lastIngestAt = const Value.absent(),
+                Value<String?> templateRequestId = const Value.absent(),
+                Value<int?> iterationNumber = const Value.absent(),
+                Value<bool> isTemplate = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => RequestsCompanion.insert(
                 requestId: requestId,
+                conversationId: conversationId,
                 title: title,
                 description: description,
                 ownerEmail: ownerEmail,
@@ -2937,10 +3452,11 @@ class $$RequestsTableTableManager
                 schemaJson: schemaJson,
                 recipientsJson: recipientsJson,
                 replyFormat: replyFormat,
-                sheetId: sheetId,
-                sheetUrl: sheetUrl,
                 gmailThreadId: gmailThreadId,
                 lastIngestAt: lastIngestAt,
+                templateRequestId: templateRequestId,
+                iterationNumber: iterationNumber,
+                isTemplate: isTemplate,
                 rowid: rowid,
               ),
           withReferenceMapper:
@@ -3642,6 +4158,176 @@ typedef $$ProcessedMessagesTableProcessedTableManager =
       ProcessedMessage,
       PrefetchHooks Function()
     >;
+typedef $$CredentialsTableCreateCompanionBuilder =
+    CredentialsCompanion Function({
+      required String key,
+      required String value,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$CredentialsTableUpdateCompanionBuilder =
+    CredentialsCompanion Function({
+      Value<String> key,
+      Value<String> value,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$CredentialsTableFilterComposer
+    extends Composer<_$AppDatabase, $CredentialsTable> {
+  $$CredentialsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CredentialsTableOrderingComposer
+    extends Composer<_$AppDatabase, $CredentialsTable> {
+  $$CredentialsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get key => $composableBuilder(
+    column: $table.key,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CredentialsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $CredentialsTable> {
+  $$CredentialsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get key =>
+      $composableBuilder(column: $table.key, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$CredentialsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $CredentialsTable,
+          Credential,
+          $$CredentialsTableFilterComposer,
+          $$CredentialsTableOrderingComposer,
+          $$CredentialsTableAnnotationComposer,
+          $$CredentialsTableCreateCompanionBuilder,
+          $$CredentialsTableUpdateCompanionBuilder,
+          (
+            Credential,
+            BaseReferences<_$AppDatabase, $CredentialsTable, Credential>,
+          ),
+          Credential,
+          PrefetchHooks Function()
+        > {
+  $$CredentialsTableTableManager(_$AppDatabase db, $CredentialsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$CredentialsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () => $$CredentialsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () =>
+                  $$CredentialsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> key = const Value.absent(),
+                Value<String> value = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CredentialsCompanion(
+                key: key,
+                value: value,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String key,
+                required String value,
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CredentialsCompanion.insert(
+                key: key,
+                value: value,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CredentialsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $CredentialsTable,
+      Credential,
+      $$CredentialsTableFilterComposer,
+      $$CredentialsTableOrderingComposer,
+      $$CredentialsTableAnnotationComposer,
+      $$CredentialsTableCreateCompanionBuilder,
+      $$CredentialsTableUpdateCompanionBuilder,
+      (
+        Credential,
+        BaseReferences<_$AppDatabase, $CredentialsTable, Credential>,
+      ),
+      Credential,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3656,4 +4342,6 @@ class $AppDatabaseManager {
       $$ActivityLogTableTableManager(_db, _db.activityLog);
   $$ProcessedMessagesTableTableManager get processedMessages =>
       $$ProcessedMessagesTableTableManager(_db, _db.processedMessages);
+  $$CredentialsTableTableManager get credentials =>
+      $$CredentialsTableTableManager(_db, _db.credentials);
 }

@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:decision_agent/features/settings/settings_controller.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -40,12 +41,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _saveOpenAiKey() async {
     final controller = ref.read(settingsControllerProvider.notifier);
+    final state = ref.watch(settingsControllerProvider);
+    
     await controller.saveOpenAiKey(_openAiKeyController.text);
     
     if (mounted && context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('OpenAI API key saved')),
-      );
+      if (state.hasError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${state.error}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('OpenAI API key saved')),
+        );
+      }
     }
   }
 
@@ -70,6 +82,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/home'),
+        ),
       ),
       body: _keyLoaded
           ? ListView(

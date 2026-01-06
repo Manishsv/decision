@@ -48,6 +48,8 @@ class OAuthConfig {
     'https://www.googleapis.com/auth/userinfo.email', // See your primary Google Account email address
     'https://www.googleapis.com/auth/userinfo.profile', // See your personal info
     'https://mail.google.com/', // Read, compose, send, and permanently delete all your email from Gmail
+    'https://www.googleapis.com/auth/spreadsheets', // See, edit, create, and delete all your Google Sheets spreadsheets
+    'https://www.googleapis.com/auth/drive', // See, edit, create, and delete all of your Google Drive files
   ];
 
   /// Validates that required OAuth configuration is present

@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:decision_agent/features/request_builder/request_builder_controller.dart';
 import 'package:decision_agent/features/request_builder/schema_editor.dart';
 import 'package:decision_agent/features/request_builder/recipients_editor.dart';
@@ -26,6 +27,49 @@ class _RequestBuilderPageState extends ConsumerState<RequestBuilderPage> {
     super.dispose();
   }
 
+  Future<void> _handleCancel(BuildContext context, RequestBuilderState state) async {
+    // Check if user has entered any data
+    final hasData = state.title.isNotEmpty ||
+        state.schema.columns.isNotEmpty ||
+        state.recipients.isNotEmpty ||
+        state.requestId != null;
+
+    if (hasData) {
+      // Show confirmation dialog if data has been entered
+      final shouldCancel = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Cancel Request?'),
+          content: const Text(
+            'You have unsaved changes. Are you sure you want to cancel?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Continue Editing'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.red,
+              ),
+              child: const Text('Cancel Request'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldCancel != true) {
+        return; // User chose to continue editing
+      }
+    }
+
+    // Navigate back to home
+    if (context.mounted) {
+      context.go('/home');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = ref.watch(requestBuilderControllerProvider.notifier);
@@ -34,6 +78,11 @@ class _RequestBuilderPageState extends ConsumerState<RequestBuilderPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('New Data Request'),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => _handleCancel(context, state),
+          tooltip: 'Cancel',
+        ),
         actions: [
           if (_currentStep > 0)
             TextButton(

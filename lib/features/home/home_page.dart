@@ -1,13 +1,28 @@
 /// Home page with 3-pane layout
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:decision_agent/features/home/conversation_list.dart';
 import 'package:decision_agent/features/home/conversation_page.dart';
 import 'package:decision_agent/features/home/inspector_panel.dart';
 
-class HomePage extends StatelessWidget {
+class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
+
+  @override
+  ConsumerState<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends ConsumerState<HomePage> {
+  @override
+  void initState() {
+    super.initState();
+    // Refresh conversations when page is first loaded
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(conversationsProvider);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

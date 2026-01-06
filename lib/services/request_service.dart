@@ -1,24 +1,80 @@
 /// Request service for creating and managing data requests
 
 import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
 import 'package:decision_agent/data/db/app_db.dart';
 import 'package:decision_agent/data/db/dao.dart';
 import 'package:decision_agent/data/google/sheets_service.dart';
 import 'package:decision_agent/data/google/google_auth_service.dart';
+import 'package:decision_agent/data/google/gmail_service.dart';
+import 'package:decision_agent/services/logging_service.dart';
 import 'package:decision_agent/domain/models.dart' as models;
 import 'package:decision_agent/domain/request_schema.dart';
+import 'package:decision_agent/domain/email_protocol.dart';
 import 'package:decision_agent/utils/ids.dart';
+import 'dart:async';
 
 class RequestService {
   final AppDatabase _db;
   final SheetsService _sheetsService;
   final GoogleAuthService _authService;
+  final GmailService _gmailService;
+  final LoggingService _loggingService;
 
-  RequestService(this._db, this._sheetsService, this._authService);
+  RequestService(
+    this._db,
+    this._sheetsService,
+    this._authService,
+    this._gmailService,
+    this._loggingService,
+  );
 
-  /// Create a draft request
+  /// Create a new conversation
+  /// Returns the conversationId
+  /// If a conversation with the same title already exists (within last hour), returns the existing conversationId
+  Future<String> createConversation({required String title}) async {
+    // Check if a conversation with the same title already exists (within last hour)
+    // This prevents duplicate conversations when user navigates away and comes back
+    final allConversations = await _db.getConversations(includeArchived: true);
+    final recentConversations =
+        allConversations.where((c) {
+          return c.title == title &&
+              DateTime.now().difference(c.createdAt).inHours < 1;
+        }).toList();
+
+    if (recentConversations.isNotEmpty) {
+      // Return the most recent conversation's ID
+      final existing = recentConversations.first;
+      debugPrint(
+        'Found existing conversation with same title, reusing: ${existing.id}',
+      );
+      return existing.id;
+    }
+
+    // Generate conversation ID
+    final conversationId = generateId();
+
+    // Create conversation (sheetId and sheetUrl will be empty until sheet is created)
+    await _db.insertConversation(
+      ConversationsCompanion.insert(
+        id: conversationId,
+        kind: models.ConversationKind.sentRequest.index,
+        title: title,
+        sheetId: '', // Will be set when sheet is created
+        sheetUrl: '', // Will be set when sheet is created
+        archived: const Value(false),
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    return conversationId;
+  }
+
+  /// Create a draft request in a conversation
   /// Returns the requestId
   Future<String> createDraftRequest({
+    required String conversationId,
     required String title,
     required RequestSchema schema,
     required List<String> recipients,
@@ -27,77 +83,78 @@ class RequestService {
   }) async {
     // Generate request ID
     final requestId = generateId();
-    
-    // Create conversation
-    final conversationId = generateId();
-    await _db.insertConversation(
-      ConversationsCompanion.insert(
-        id: conversationId,
-        kind: models.ConversationKind.sentRequest.index,
-        title: title,
-        requestId: requestId,
-        status: models.RequestStatus.draft.index,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      ),
-    );
-    
+
     // Get user email for ownerEmail
     final ownerEmail = await _authService.getUserEmail();
-    
-    // Create data request (sheetId and sheetUrl will be empty until sheet is created)
+
+    // Create data request
     final request = models.DataRequest(
       requestId: requestId,
+      conversationId: conversationId,
       title: title,
       description: instructions,
       ownerEmail: ownerEmail,
       dueAt: dueDate,
       schema: schema,
       recipients: recipients,
-      sheetId: '', // Will be set when sheet is created
-      sheetUrl: '', // Will be set when sheet is created
+      isTemplate: false, // Can be marked as template later
     );
-    
+
     await _db.insertRequest(request);
-    
+
     return requestId;
   }
 
-  /// Create Google Sheet for a request
-  /// [requestId] - Request ID
+  /// Create Google Sheet for a conversation
+  /// [conversationId] - Conversation ID
+  /// [schema] - Request schema for headers
   /// Returns the sheet URL
-  Future<String> createSheetForRequest(String requestId) async {
-    // Get request from database
-    final request = await _db.getRequest(requestId);
-    if (request == null) {
-      throw Exception('Request not found: $requestId');
+  Future<String> createSheetForConversation(
+    String conversationId,
+    RequestSchema schema,
+  ) async {
+    // Get conversation from database
+    final conversations = await _db.getConversations(includeArchived: true);
+    final conversation = conversations.firstWhere(
+      (c) => c.id == conversationId,
+      orElse: () => throw Exception('Conversation not found: $conversationId'),
+    );
+
+    // If conversation already has a sheet, return it
+    if (conversation.sheetId.isNotEmpty && conversation.sheetUrl.isNotEmpty) {
+      return conversation.sheetUrl;
     }
-    
-    // Create sheet with request title
-    final sheetInfo = await _sheetsService.createSheet(request.title);
+
+    // Create sheet with conversation title
+    final sheetInfo = await _sheetsService.createSheet(conversation.title);
     final sheetId = sheetInfo['sheetId'];
     final sheetUrl = sheetInfo['sheetUrl'];
-    
+
     if (sheetId == null || sheetId.isEmpty) {
       throw Exception('Failed to create sheet: no sheet ID returned');
     }
-    
+
     if (sheetUrl == null || sheetUrl.isEmpty) {
       throw Exception('Failed to create sheet: no sheet URL returned');
     }
-    
+
     // Set up Responses tab with headers
-    await _sheetsService.ensureResponsesTabAndHeaders(sheetId, request.schema);
-    
-    // Update request with sheet info
-    await _db.updateRequest(
-      requestId,
-      RequestsCompanion(
-        sheetId: Value(sheetId),
-        sheetUrl: Value(sheetUrl),
+    await _sheetsService.ensureResponsesTabAndHeaders(sheetId, schema);
+
+    // Update conversation with sheet info
+    await _db.insertConversation(
+      ConversationsCompanion.insert(
+        id: conversationId,
+        kind: conversation.kind.index,
+        title: conversation.title,
+        sheetId: sheetId,
+        sheetUrl: sheetUrl,
+        archived: Value(conversation.archived),
+        createdAt: conversation.createdAt,
+        updatedAt: DateTime.now(),
       ),
     );
-    
+
     return sheetUrl;
   }
 
@@ -110,41 +167,249 @@ class RequestService {
     required DateTime dueDate,
   }) {
     final errors = <String>[];
-    
+
     if (title.trim().isEmpty) {
       errors.add('Title is required');
     }
-    
+
     if (schema.columns.isEmpty) {
       errors.add('At least one column is required in the schema');
     }
-    
+
     for (final column in schema.columns) {
       if (column.name.trim().isEmpty) {
         errors.add('Column name cannot be empty');
       }
     }
-    
+
     if (recipients.isEmpty) {
       errors.add('At least one recipient is required');
     }
-    
+
     for (final recipient in recipients) {
       if (!_isValidEmail(recipient)) {
         errors.add('Invalid email address: $recipient');
       }
     }
-    
+
     if (dueDate.isBefore(DateTime.now())) {
       errors.add('Due date must be in the future');
     }
-    
+
     return errors;
   }
 
   /// Check if email is valid
   bool _isValidEmail(String email) {
-    final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    final emailRegex = RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    );
     return emailRegex.hasMatch(email.trim());
+  }
+
+  /// Send request emails to all recipients
+  /// [requestId] - Request ID to send
+  /// Returns map with send results: {sent: int, failed: int, errors: List<String>}
+  Future<Map<String, dynamic>> sendRequest(String requestId) async {
+    // Load request from database
+    final request = await _db.getRequest(requestId);
+    if (request == null) {
+      throw Exception('Request not found: $requestId');
+    }
+
+    // Get conversation to check for sheet
+    final conversations = await _db.getConversations(includeArchived: true);
+    final conversation = conversations.firstWhere(
+      (c) => c.id == request.conversationId,
+      orElse:
+          () =>
+              throw Exception(
+                'Conversation not found: ${request.conversationId}',
+              ),
+    );
+
+    if (conversation.sheetId.isEmpty) {
+      throw Exception('Sheet must be created before sending request');
+    }
+
+    final results = <String, dynamic>{
+      'sent': 0,
+      'failed': 0,
+      'errors': <String>[],
+    };
+
+    // Generate email subject and body
+    final subject = buildRequestSubjectFromId(request.requestId, request.title);
+    final emailBody = buildRequestEmailBody(request);
+
+    // Send to each recipient
+    for (final recipient in request.recipients) {
+      try {
+        // Send email
+        final messageId = await _gmailService.sendEmail(
+          to: recipient,
+          subject: subject,
+          body: emailBody,
+        );
+
+        // Mark recipient as pending
+        await _db.upsertRecipientStatus(
+          models.RecipientStatus(
+            requestId: requestId,
+            email: recipient,
+            status: models.RecipientState.pending,
+            lastMessageId: messageId,
+            lastResponseAt: null,
+            reminderSentAt: null,
+            note: null,
+          ),
+        );
+
+        // Log activity
+        await _loggingService.logActivity(requestId, models.ActivityType.sent, {
+          'recipient': recipient,
+          'messageId': messageId,
+        });
+
+        results['sent'] = (results['sent'] as int) + 1;
+
+        // Rate limiting: 100ms delay between sends
+        await Future.delayed(const Duration(milliseconds: 100));
+      } catch (e) {
+        // Mark recipient as bounced
+        await _db.upsertRecipientStatus(
+          models.RecipientStatus(
+            requestId: requestId,
+            email: recipient,
+            status: models.RecipientState.bounced,
+            lastMessageId: null,
+            lastResponseAt: null,
+            reminderSentAt: null,
+            note: 'Send failed: $e',
+          ),
+        );
+
+        // Log error
+        await _loggingService.logActivity(
+          requestId,
+          models.ActivityType.sendError,
+          {'recipient': recipient, 'error': e.toString()},
+        );
+
+        results['failed'] = (results['failed'] as int) + 1;
+        (results['errors'] as List<String>).add('$recipient: $e');
+      }
+    }
+
+    // Update conversation's updatedAt timestamp
+    final allConversations = await _db.getConversations(includeArchived: true);
+    final conversationToUpdate = allConversations.firstWhere(
+      (c) => c.id == request.conversationId,
+      orElse:
+          () =>
+              throw Exception('Conversation not found for request: $requestId'),
+    );
+
+    await _db.insertConversation(
+      ConversationsCompanion.insert(
+        id: conversationToUpdate.id,
+        kind: conversationToUpdate.kind.index,
+        title: conversationToUpdate.title,
+        sheetId: conversationToUpdate.sheetId,
+        sheetUrl: conversationToUpdate.sheetUrl,
+        archived: Value(conversationToUpdate.archived),
+        createdAt: conversationToUpdate.createdAt,
+        updatedAt: DateTime.now(),
+      ),
+    );
+
+    return results;
+  }
+
+  /// Create a new iteration from a template request
+  ///
+  /// [templateRequestId] - The template request ID to create iteration from
+  /// [newDueDate] - Due date for the new iteration
+  /// [reuseSheet] - If true, reuse template's sheet; if false, create new sheet
+  ///
+  /// Returns the new requestId
+  Future<String> createIterationFromTemplate({
+    required String templateRequestId,
+    required DateTime newDueDate,
+    bool reuseSheet = false,
+  }) async {
+    // Load template request
+    final template = await _db.getRequest(templateRequestId);
+    if (template == null) {
+      throw Exception('Template request not found: $templateRequestId');
+    }
+
+    // Count existing iterations to determine iteration number
+    final iterationCount = await _db.countTemplateIterations(templateRequestId);
+    final iterationNumber = iterationCount + 1;
+
+    // Generate new request ID
+    final newRequestId = generateId();
+
+    // Reuse the same conversation (iterations belong to the same conversation)
+    final conversationId = template.conversationId;
+
+    // Get conversation to check if it has a sheet
+    final conversations = await _db.getConversations(includeArchived: true);
+    final conversation = conversations.firstWhere(
+      (c) => c.id == conversationId,
+      orElse: () => throw Exception('Conversation not found: $conversationId'),
+    );
+
+    // Ensure conversation has a sheet
+    if (conversation.sheetId.isEmpty) {
+      await createSheetForConversation(conversationId, template.schema);
+      // Get updated conversation with sheet info
+      final updatedConversations = await _db.getConversations(
+        includeArchived: true,
+      );
+      final updatedConversation = updatedConversations.firstWhere(
+        (c) => c.id == conversationId,
+      );
+      // Verify sheet was created
+      if (updatedConversation.sheetId.isEmpty) {
+        throw Exception('Failed to create sheet for iteration');
+      }
+    }
+
+    // Create new iteration request in the same conversation
+    final iteration = models.DataRequest(
+      requestId: newRequestId,
+      conversationId: conversationId,
+      title: template.title,
+      description: template.description,
+      ownerEmail: template.ownerEmail,
+      dueAt: newDueDate,
+      schema: template.schema,
+      recipients: template.recipients,
+      replyFormat: template.replyFormat,
+      templateRequestId: templateRequestId,
+      iterationNumber: iterationNumber,
+      isTemplate: false,
+    );
+
+    await _db.insertRequest(iteration);
+
+    return newRequestId;
+  }
+
+  /// Get all iterations for a template request
+  Future<List<models.DataRequest>> getTemplateIterations(
+    String templateRequestId,
+  ) async {
+    return await _db.getTemplateIterations(templateRequestId);
+  }
+
+  /// Mark a request as a template (for recurring requests)
+  Future<void> markAsTemplate(String requestId) async {
+    await _db.updateRequest(
+      requestId,
+      RequestsCompanion(isTemplate: const Value(true)),
+    );
   }
 }

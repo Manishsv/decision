@@ -1,11 +1,13 @@
 /// Request builder controller (Riverpod provider)
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:decision_agent/data/db/app_db.dart';
+import 'package:decision_agent/app/db_provider.dart';
 import 'package:decision_agent/data/google/google_auth_service.dart';
 import 'package:decision_agent/app/auth_provider.dart';
 import 'package:decision_agent/data/google/sheets_service.dart';
+import 'package:decision_agent/data/google/gmail_service.dart';
 import 'package:decision_agent/services/request_service.dart';
+import 'package:decision_agent/services/logging_service.dart';
 import 'package:decision_agent/domain/request_schema.dart';
 import 'package:decision_agent/domain/models.dart' as models;
 import 'package:decision_agent/utils/ids.dart';
@@ -16,8 +18,8 @@ class RequestBuilderState {
   final RequestSchema schema;
   final List<String> recipients;
   final DateTime? dueDate;
-  final String? sheetId;
-  final String? sheetUrl;
+  final String? conversationId; // Conversation ID (sheet belongs to conversation)
+  final String? sheetUrl; // Sheet URL (from conversation)
   final String? requestId;
   final bool isLoading;
   final String? error;
@@ -28,7 +30,7 @@ class RequestBuilderState {
     RequestSchema? schema,
     List<String>? recipients,
     this.dueDate,
-    this.sheetId,
+    this.conversationId,
     this.sheetUrl,
     this.requestId,
     this.isLoading = false,
@@ -42,7 +44,7 @@ class RequestBuilderState {
     RequestSchema? schema,
     List<String>? recipients,
     DateTime? dueDate,
-    String? sheetId,
+    String? conversationId,
     String? sheetUrl,
     String? requestId,
     bool? isLoading,
@@ -54,7 +56,7 @@ class RequestBuilderState {
       schema: schema ?? this.schema,
       recipients: recipients ?? this.recipients,
       dueDate: dueDate ?? this.dueDate,
-      sheetId: sheetId ?? this.sheetId,
+      conversationId: conversationId ?? this.conversationId,
       sheetUrl: sheetUrl ?? this.sheetUrl,
       requestId: requestId ?? this.requestId,
       isLoading: isLoading ?? this.isLoading,
@@ -113,8 +115,17 @@ class RequestBuilderController extends StateNotifier<RequestBuilderState> {
         return;
       }
 
-      // Create draft
+      // Create conversation first (if not already created)
+      String conversationId = state.conversationId ?? '';
+      if (conversationId.isEmpty) {
+        conversationId = await _requestService.createConversation(
+          title: state.title,
+        );
+      }
+
+      // Create draft request in conversation
       final requestId = await _requestService.createDraftRequest(
+        conversationId: conversationId,
         title: state.title,
         schema: state.schema,
         recipients: state.recipients,
@@ -123,6 +134,7 @@ class RequestBuilderController extends StateNotifier<RequestBuilderState> {
       );
 
       state = state.copyWith(
+        conversationId: conversationId,
         requestId: requestId,
         isLoading: false,
       );
@@ -135,8 +147,22 @@ class RequestBuilderController extends StateNotifier<RequestBuilderState> {
   }
 
   Future<void> createSheet() async {
+    // Ensure draft is created first
     if (state.requestId == null) {
       await createDraft();
+      // Check if draft creation was successful
+      if (state.error != null) {
+        // Draft creation failed, don't proceed
+        return;
+      }
+      // Wait a bit for state to update (Riverpod state updates are synchronous but this ensures consistency)
+      if (state.requestId == null) {
+        state = state.copyWith(
+          isLoading: false,
+          error: 'Request ID is missing. Please complete previous steps (title, schema, recipients, due date).',
+        );
+        return;
+      }
     }
 
     final requestId = state.requestId;
@@ -148,24 +174,29 @@ class RequestBuilderController extends StateNotifier<RequestBuilderState> {
       return;
     }
 
-    if (state.sheetId != null) {
+    // Ensure conversation exists
+    if (state.conversationId == null) {
+      state = state.copyWith(
+        isLoading: false,
+        error: 'Conversation ID is missing. Please complete previous steps.',
+      );
+      return;
+    }
+
+    if (state.sheetUrl != null && state.sheetUrl!.isNotEmpty) {
       return; // Already created
     }
 
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      final sheetUrl = await _requestService.createSheetForRequest(requestId);
-
-      // Extract sheet ID from URL
-      final sheetId = _extractSheetIdFromUrl(sheetUrl);
-      
-      if (sheetId == null) {
-        throw Exception('Failed to extract sheet ID from URL: $sheetUrl');
-      }
+      // Create sheet for conversation
+      final sheetUrl = await _requestService.createSheetForConversation(
+        state.conversationId!,
+        state.schema,
+      );
 
       state = state.copyWith(
-        sheetId: sheetId,
         sheetUrl: sheetUrl,
         isLoading: false,
       );
@@ -183,14 +214,52 @@ class RequestBuilderController extends StateNotifier<RequestBuilderState> {
     final match = regex.firstMatch(url);
     return match?.group(1);
   }
+
+  Future<Map<String, dynamic>?> sendRequest() async {
+    if (state.requestId == null) {
+      state = state.copyWith(
+        error: 'Request ID is missing. Please complete previous steps.',
+      );
+      return null;
+    }
+
+    if (state.sheetUrl == null || state.sheetUrl!.isEmpty) {
+      state = state.copyWith(
+        error: 'Sheet must be created before sending request.',
+      );
+      return null;
+    }
+
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      final results = await _requestService.sendRequest(state.requestId!);
+      state = state.copyWith(isLoading: false);
+      return results;
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+      return null;
+    }
+  }
 }
 
 final requestBuilderControllerProvider =
     StateNotifierProvider<RequestBuilderController, RequestBuilderState>((ref) {
-  final db = AppDatabase();
+  final db = ref.read(appDatabaseProvider);
   // Use the shared provider instance instead of creating a new one
   final authService = ref.read(googleAuthServiceProvider);
   final sheetsService = SheetsService(authService);
-  final requestService = RequestService(db, sheetsService, authService);
+  final gmailService = GmailService(authService);
+  final loggingService = LoggingService(db);
+  final requestService = RequestService(
+    db,
+    sheetsService,
+    authService,
+    gmailService,
+    loggingService,
+  );
   return RequestBuilderController(requestService);
 });

@@ -2,11 +2,13 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:decision_agent/data/google/google_auth_service.dart';
+import 'package:decision_agent/app/db_provider.dart' show globalDb;
 
 /// Global singleton instance for auth service
 /// This ensures all parts of the app use the same instance,
 /// which is important for maintaining the in-memory token cache
-final _globalAuthService = GoogleAuthService();
+/// Uses a shared database instance for credential storage
+final _globalAuthService = GoogleAuthService(globalDb);
 
 /// Singleton provider for GoogleAuthService
 /// This ensures all parts of the app use the same instance,

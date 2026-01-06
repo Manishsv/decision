@@ -1,17 +1,32 @@
 /// Sheet creation section
 
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:decision_agent/features/request_builder/request_builder_controller.dart';
+import 'package:decision_agent/features/home/conversation_page.dart';
 
 class SheetSection extends ConsumerWidget {
   const SheetSection({super.key});
 
   Future<void> _openSheet(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
+    try {
+      // On macOS, use the native 'open' command which is more reliable
+      if (Platform.isMacOS) {
+        await Process.run('open', [url]);
+      } else if (Platform.isLinux) {
+        await Process.run('xdg-open', [url]);
+      } else if (Platform.isWindows) {
+        await Process.run('start', [url], runInShell: true);
+      } else {
+        // Fallback for other platforms - try url_launcher
+        // This shouldn't be reached on macOS, but just in case
+        throw UnsupportedError('Platform not supported for URL launching');
+      }
+    } catch (e) {
+      // If launch fails, show error to user
+      debugPrint('Error opening sheet URL: $e');
+      // You could show a snackbar here if you have access to context
     }
   }
 
@@ -35,7 +50,7 @@ class SheetSection extends ConsumerWidget {
             style: TextStyle(color: Colors.grey),
           ),
           const SizedBox(height: 32),
-          if (state.sheetId == null) ...[
+          if (state.sheetUrl == null || state.sheetUrl!.isEmpty) ...[
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -52,8 +67,14 @@ class SheetSection extends ConsumerWidget {
                       onPressed: state.isLoading
                           ? null
                           : () async {
-                              await controller.createDraft();
+                              // createSheet() will call createDraft() if needed
+                              // So we don't need to call it separately
                               await controller.createSheet();
+                              // Refresh conversations list when sheet is created
+                              final updatedState = ref.read(requestBuilderControllerProvider);
+                              if (updatedState.requestId != null) {
+                                ref.invalidate(conversationsProvider);
+                              }
                             },
                       icon: state.isLoading
                           ? const SizedBox(

@@ -29,21 +29,21 @@ class GmailService {
   }) async {
     try {
       final api = await _getGmailApi();
-      
+
       // Build the email message
       final message = gmail.Message();
-      
+
       // Create email headers
       final headers = <String, String>{
         'To': to,
         'Subject': subject,
         'Content-Type': 'text/plain; charset=utf-8',
       };
-      
+
       if (replyTo != null) {
         headers['Reply-To'] = replyTo;
       }
-      
+
       // Build raw email message (RFC 2822 format)
       final emailParts = <String>[];
       headers.forEach((key, value) {
@@ -51,21 +51,18 @@ class GmailService {
       });
       emailParts.add(''); // Empty line between headers and body
       emailParts.add(body);
-      
+
       final rawMessage = emailParts.join('\r\n');
-      
+
       // Encode to base64url (Gmail API requirement)
       final bytes = utf8.encode(rawMessage);
       final base64Message = base64Url.encode(bytes);
-      
+
       message.raw = base64Message;
-      
+
       // Send the email
-      final sentMessage = await api.users.messages.send(
-        message,
-        'me',
-      );
-      
+      final sentMessage = await api.users.messages.send(message, 'me');
+
       return sentMessage.id ?? '';
     } catch (e) {
       throw Exception('Failed to send email: $e');
@@ -78,16 +75,98 @@ class GmailService {
   Future<List<String>> searchMessages(String query) async {
     try {
       final api = await _getGmailApi();
-      
-      final response = await api.users.messages.list(
-        'me',
-        q: query,
-      );
-      
-      return response.messages?.map((m) => m.id ?? '').where((id) => id.isNotEmpty).toList() ?? [];
+
+      final response = await api.users.messages.list('me', q: query);
+
+      return response.messages
+              ?.map((m) => m.id ?? '')
+              .where((id) => id.isNotEmpty)
+              .toList() ??
+          [];
     } catch (e) {
       throw Exception('Failed to search messages: $e');
     }
+  }
+
+  /// Search for messages by request ID (from subject line)
+  /// [requestId] - Request ID to search for
+  /// Returns list of message objects
+  Future<List<gmail.Message>> searchMessagesByRequestId(
+    String requestId,
+  ) async {
+    try {
+      // Search for messages with the request ID in the subject
+      final query = 'subject:"[DATA-REQ:$requestId]"';
+      final messageIds = await searchMessages(query);
+
+      // Fetch full message objects
+      final messages = <gmail.Message>[];
+      for (final messageId in messageIds) {
+        try {
+          final message = await getMessage(messageId);
+          messages.add(message);
+        } catch (e) {
+          // Skip messages that can't be fetched
+          continue;
+        }
+      }
+
+      return messages;
+    } catch (e) {
+      throw Exception('Failed to search messages by request ID: $e');
+    }
+  }
+
+  /// Extract sender email from a message
+  /// [message] - Gmail message object
+  /// Returns the sender email address
+  String? getFromEmail(gmail.Message message) {
+    final headers = message.payload?.headers;
+    if (headers == null) return null;
+
+    for (final header in headers) {
+      if (header.name?.toLowerCase() == 'from') {
+        final from = header.value ?? '';
+        // Extract email from "Name <email@example.com>" or just "email@example.com"
+        final emailMatch = RegExp(r'[\w\.-]+@[\w\.-]+\.\w+').firstMatch(from);
+        return emailMatch?.group(0);
+      }
+    }
+
+    return null;
+  }
+
+  /// Extract internal date from a message
+  /// [message] - Gmail message object
+  /// Returns the date as DateTime, or null if not found
+  DateTime? getInternalDate(gmail.Message message) {
+    final timestamp = message.internalDate;
+    if (timestamp == null) return null;
+
+    // internalDate is a String that needs to be parsed
+    final milliseconds = int.tryParse(timestamp.toString());
+    if (milliseconds != null) {
+      return DateTime.fromMillisecondsSinceEpoch(milliseconds);
+    }
+
+    // Fallback: try to parse from Date header
+    final headers = message.payload?.headers;
+    if (headers == null) return null;
+
+    for (final header in headers) {
+      if (header.name?.toLowerCase() == 'date') {
+        try {
+          // Parse RFC 2822 date
+          final dateStr = header.value ?? '';
+          // Simple parsing - for production, use a proper date parser
+          return DateTime.tryParse(dateStr);
+        } catch (e) {
+          return null;
+        }
+      }
+    }
+
+    return null;
   }
 
   /// Get a message by ID
@@ -96,13 +175,13 @@ class GmailService {
   Future<gmail.Message> getMessage(String messageId) async {
     try {
       final api = await _getGmailApi();
-      
+
       final message = await api.users.messages.get(
         'me',
         messageId,
         format: 'full', // Get full message with body
       );
-      
+
       return message;
     } catch (e) {
       throw Exception('Failed to get message: $e');
@@ -114,33 +193,34 @@ class GmailService {
   /// Returns the plain text body, or null if not found
   String? extractPlainTextBody(gmail.Message message) {
     if (message.payload == null) return null;
-    
+
     // Check if message has a plain text part
     final payload = message.payload!;
-    
+
     if (payload.body?.data != null) {
       // Single part message
       return _decodeBase64Url(payload.body!.data!);
     }
-    
+
     // Multi-part message - find text/plain part
     if (payload.parts != null) {
       for (final part in payload.parts!) {
         if (part.mimeType == 'text/plain' && part.body?.data != null) {
           return _decodeBase64Url(part.body!.data!);
         }
-        
+
         // Check nested parts (for multipart/alternative)
         if (part.parts != null) {
           for (final nestedPart in part.parts!) {
-            if (nestedPart.mimeType == 'text/plain' && nestedPart.body?.data != null) {
+            if (nestedPart.mimeType == 'text/plain' &&
+                nestedPart.body?.data != null) {
               return _decodeBase64Url(nestedPart.body!.data!);
             }
           }
         }
       }
     }
-    
+
     return null;
   }
 

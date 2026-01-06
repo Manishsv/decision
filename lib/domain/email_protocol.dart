@@ -10,6 +10,11 @@ String buildRequestSubject(DataRequest request) {
   return '[DATA-REQ:${request.requestId}] ${request.title}';
 }
 
+/// Generate email subject line for a data request (overload with requestId and title)
+String buildRequestSubjectFromId(String requestId, String title) {
+  return '[DATA-REQ:$requestId] $title';
+}
+
 /// Generate email subject line for a reminder
 /// Format: [DATA-REQ:<requestId>] Reminder: <Title>
 String buildReminderSubject(DataRequest request) {
