@@ -31,24 +31,54 @@ class RequestService {
 
   /// Create a new conversation
   /// Returns the conversationId
-  /// If a conversation with the same title already exists (within last hour), returns the existing conversationId
+  /// If title is "New Conversation", generates a unique name like "New Conversation 2"
   Future<String> createConversation({required String title}) async {
-    // Check if a conversation with the same title already exists (within last hour)
-    // This prevents duplicate conversations when user navigates away and comes back
-    final allConversations = await _db.getConversations(includeArchived: true);
-    final recentConversations =
-        allConversations.where((c) {
-          return c.title == title &&
-              DateTime.now().difference(c.createdAt).inHours < 1;
-        }).toList();
-
-    if (recentConversations.isNotEmpty) {
-      // Return the most recent conversation's ID
-      final existing = recentConversations.first;
-      debugPrint(
-        'Found existing conversation with same title, reusing: ${existing.id}',
+    // If title is "New Conversation", generate a unique name
+    if (title == 'New Conversation') {
+      final allConversations = await _db.getConversations(
+        includeArchived: true,
       );
-      return existing.id;
+
+      // Find all conversations that start with "New Conversation"
+      final newConversations =
+          allConversations.where((c) {
+            return c.title == 'New Conversation' ||
+                c.title.startsWith('New Conversation ');
+          }).toList();
+
+      // Generate unique name
+      // Collect all numbers used (including base "New Conversation" as 1)
+      final usedNumbers = <int>{};
+      for (final conv in newConversations) {
+        if (conv.title == 'New Conversation') {
+          usedNumbers.add(1); // Base "New Conversation" counts as #1
+        } else {
+          // Extract number from "New Conversation 2", "New Conversation 3", etc.
+          final match = RegExp(
+            r'New Conversation (\d+)$',
+          ).firstMatch(conv.title);
+          if (match != null) {
+            final num = int.tryParse(match.group(1) ?? '0') ?? 0;
+            if (num > 0) {
+              usedNumbers.add(num);
+            }
+          }
+        }
+      }
+
+      // Find the next available number starting from 2
+      // (since "New Conversation" without number is treated as #1)
+      if (usedNumbers.isEmpty) {
+        // No existing "New Conversation" titles, use base name
+        title = 'New Conversation';
+      } else {
+        // Find the next available number
+        int nextNumber = 2;
+        while (usedNumbers.contains(nextNumber)) {
+          nextNumber++;
+        }
+        title = 'New Conversation $nextNumber';
+      }
     }
 
     // Generate conversation ID
@@ -69,6 +99,33 @@ class RequestService {
     );
 
     return conversationId;
+  }
+
+  /// Update conversation title
+  Future<void> updateConversationTitle({
+    required String conversationId,
+    required String title,
+  }) async {
+    // Get conversation
+    final conversations = await _db.getConversations(includeArchived: true);
+    final conversation = conversations.firstWhere(
+      (c) => c.id == conversationId,
+      orElse: () => throw Exception('Conversation not found: $conversationId'),
+    );
+
+    // Update conversation title
+    await _db.insertConversation(
+      ConversationsCompanion.insert(
+        id: conversationId,
+        kind: conversation.kind.index,
+        title: title.trim(),
+        sheetId: conversation.sheetId,
+        sheetUrl: conversation.sheetUrl,
+        archived: Value(conversation.archived),
+        createdAt: conversation.createdAt,
+        updatedAt: DateTime.now(),
+      ),
+    );
   }
 
   /// Create a draft request in a conversation
@@ -237,6 +294,18 @@ class RequestService {
       'failed': 0,
       'errors': <String>[],
     };
+
+    // Validate schema before generating email
+    if (request.schema.columns.isEmpty) {
+      throw Exception(
+        'Request schema is empty. Cannot send email without schema columns.',
+      );
+    }
+
+    // Debug: Log schema columns to verify correctness
+    debugPrint(
+      'Sending request ${request.requestId} with schema columns: ${request.schema.columns.map((c) => c.name).join(", ")}',
+    );
 
     // Generate email subject and body
     final subject = buildRequestSubjectFromId(request.requestId, request.title);

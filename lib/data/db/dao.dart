@@ -59,7 +59,63 @@ extension AppDatabaseDao on AppDatabase {
     );
   }
 
+  /// Save AI chat message
+  Future<void> saveAIChatMessage({
+    required String messageId,
+    required String conversationId,
+    required String role, // 'user' or 'assistant'
+    required String content,
+    DateTime? timestamp,
+  }) async {
+    await into(aIChatMessages).insert(
+      AIChatMessagesCompanion.insert(
+        id: messageId,
+        conversationId: conversationId,
+        role: role,
+        content: content,
+        timestamp: Value(timestamp ?? DateTime.now()),
+      ),
+      mode: InsertMode.replace,
+    );
+  }
+
+  /// Get AI chat messages for a conversation, ordered by timestamp
+  /// [limit] - Maximum number of messages to return (for context window management)
+  Future<List<AIChatMessage>> getAIChatMessages(
+    String conversationId, {
+    int? limit,
+  }) async {
+    var query =
+        select(aIChatMessages)
+          ..where((tbl) => tbl.conversationId.equals(conversationId))
+          ..orderBy([(tbl) => OrderingTerm(expression: tbl.timestamp)]);
+
+    if (limit != null) {
+      query = query..limit(limit);
+    }
+
+    return await query.get();
+  }
+
+  /// Delete all AI chat messages for a conversation
+  Future<void> deleteAIChatMessages(String conversationId) async {
+    await (delete(aIChatMessages)
+      ..where((tbl) => tbl.conversationId.equals(conversationId))).go();
+  }
+
+  /// Get count of AI chat messages for a conversation
+  Future<int> countAIChatMessages(String conversationId) async {
+    final query =
+        selectOnly(aIChatMessages)
+          ..addColumns([aIChatMessages.id.count()])
+          ..where(aIChatMessages.conversationId.equals(conversationId));
+    final result = await query.getSingle();
+    return result.read(aIChatMessages.id.count()) ?? 0;
+  }
+
   Future<void> deleteConversation(String conversationId) async {
+    // Delete AI chat messages
+    await deleteAIChatMessages(conversationId);
     // Get all requests for this conversation
     final conversationRequests =
         await (select(requests)
@@ -330,6 +386,16 @@ extension AppDatabaseDao on AppDatabase {
       ),
       mode: InsertMode.replace,
     );
+  }
+
+  /// Unmark a message as processed (for reparsing)
+  Future<void> unmarkMessageProcessed(
+    String requestId,
+    String messageId,
+  ) async {
+    await (delete(processedMessages)..where(
+      (p) => p.requestId.equals(requestId) & p.messageId.equals(messageId),
+    )).go();
   }
 
   Future<bool> isMessageProcessed(String requestId, String messageId) async {

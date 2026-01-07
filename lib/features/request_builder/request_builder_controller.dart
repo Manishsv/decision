@@ -2,6 +2,8 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:decision_agent/app/db_provider.dart';
+import 'package:decision_agent/data/db/app_db.dart';
+import 'package:decision_agent/data/db/dao.dart';
 import 'package:decision_agent/data/google/google_auth_service.dart';
 import 'package:decision_agent/app/auth_provider.dart';
 import 'package:decision_agent/data/google/sheets_service.dart';
@@ -67,8 +69,9 @@ class RequestBuilderState {
 
 class RequestBuilderController extends StateNotifier<RequestBuilderState> {
   final RequestService _requestService;
+  final AppDatabase _db;
 
-  RequestBuilderController(this._requestService)
+  RequestBuilderController(this._requestService, this._db)
       : super(RequestBuilderState());
 
   void updateTitle(String title) {
@@ -89,6 +92,41 @@ class RequestBuilderController extends StateNotifier<RequestBuilderState> {
 
   void updateDueDate(DateTime dueDate) {
     state = state.copyWith(dueDate: dueDate);
+  }
+
+  void setConversationId(String conversationId) {
+    state = state.copyWith(conversationId: conversationId);
+  }
+
+  /// Load conversation data for new request (schema, title, etc. from most recent request)
+  Future<void> loadConversationData(String conversationId) async {
+    try {
+      // Get all requests for this conversation
+      final requests = await _db.getRequestsByConversation(conversationId);
+      if (requests.isEmpty) {
+        throw Exception('No requests found in conversation');
+      }
+      
+      // Use the most recent request as template
+      final mostRecentRequest = requests.first;
+      
+      // Get conversation to get title
+      final conversations = await _db.getConversations(includeArchived: true);
+      final conversation = conversations.firstWhere(
+        (c) => c.id == conversationId,
+        orElse: () => throw Exception('Conversation not found'),
+      );
+      
+      // Update state with conversation data
+      state = state.copyWith(
+        title: conversation.title, // Use conversation title
+        schema: mostRecentRequest.schema, // Reuse schema from most recent request
+        sheetUrl: conversation.sheetUrl.isNotEmpty ? conversation.sheetUrl : null,
+        // Recipients will be set by user in Send section
+      );
+    } catch (e) {
+      state = state.copyWith(error: 'Failed to load conversation data: $e');
+    }
   }
 
   Future<void> createDraft() async {
@@ -261,5 +299,5 @@ final requestBuilderControllerProvider =
     gmailService,
     loggingService,
   );
-  return RequestBuilderController(requestService);
+  return RequestBuilderController(requestService, db);
 });

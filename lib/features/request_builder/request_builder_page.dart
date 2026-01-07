@@ -11,7 +11,14 @@ import 'package:decision_agent/features/request_builder/sheet_section.dart';
 import 'package:decision_agent/features/request_builder/send_section.dart';
 
 class RequestBuilderPage extends ConsumerStatefulWidget {
-  const RequestBuilderPage({super.key});
+  final String? conversationId;
+  final bool isNewConversation;
+
+  const RequestBuilderPage({
+    super.key,
+    this.conversationId,
+    this.isNewConversation = true,
+  });
 
   @override
   ConsumerState<RequestBuilderPage> createState() => _RequestBuilderPageState();
@@ -20,6 +27,7 @@ class RequestBuilderPage extends ConsumerStatefulWidget {
 class _RequestBuilderPageState extends ConsumerState<RequestBuilderPage> {
   final _pageController = PageController();
   int _currentStep = 0;
+  bool _conversationIdInitialized = false;
 
   @override
   void dispose() {
@@ -75,9 +83,33 @@ class _RequestBuilderPageState extends ConsumerState<RequestBuilderPage> {
     final controller = ref.watch(requestBuilderControllerProvider.notifier);
     final state = ref.watch(requestBuilderControllerProvider);
 
+    // Initialize controller with conversationId if provided (only once)
+    if (widget.conversationId != null && !_conversationIdInitialized) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        controller.setConversationId(widget.conversationId!);
+        
+        // If this is a new request (not new conversation), load conversation data and skip to last step
+        if (!widget.isNewConversation) {
+          await controller.loadConversationData(widget.conversationId!);
+          // Skip to last step (Send section is step 5, index 5)
+          if (_pageController.hasClients) {
+            _pageController.jumpToPage(5);
+          }
+          setState(() {
+            _currentStep = 5;
+            _conversationIdInitialized = true;
+          });
+        } else {
+          setState(() {
+            _conversationIdInitialized = true;
+          });
+        }
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Data Request'),
+        title: Text(widget.isNewConversation ? 'New Conversation' : 'New Request'),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => _handleCancel(context, state),

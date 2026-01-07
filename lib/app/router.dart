@@ -27,7 +27,14 @@ final router = GoRouter(
     ),
     GoRoute(
       path: '/request/new',
-      builder: (context, state) => const RequestBuilderPage(),
+      builder: (context, state) {
+        final conversationId = state.uri.queryParameters['conversationId'];
+        final type = state.uri.queryParameters['type'] ?? 'conversation';
+        return RequestBuilderPage(
+          conversationId: conversationId,
+          isNewConversation: type == 'conversation',
+        );
+      },
     ),
   ],
   redirect: (context, state) async {

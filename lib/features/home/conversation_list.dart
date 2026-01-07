@@ -7,6 +7,11 @@ import 'package:decision_agent/features/home/conversation_page.dart';
 import 'package:decision_agent/domain/models.dart' as models;
 import 'package:decision_agent/app/db_provider.dart';
 import 'package:decision_agent/data/db/dao.dart';
+import 'package:decision_agent/app/auth_provider.dart';
+import 'package:decision_agent/services/request_service.dart';
+import 'package:decision_agent/data/google/sheets_service.dart';
+import 'package:decision_agent/data/google/gmail_service.dart';
+import 'package:decision_agent/services/logging_service.dart';
 
 class ConversationList extends ConsumerWidget {
   const ConversationList({super.key});
@@ -41,8 +46,21 @@ class ConversationList extends ConsumerWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.add),
-                onPressed: () => context.go('/request/new'),
-                tooltip: 'New Request',
+                onPressed: () async {
+                  try {
+                    await ConversationListHelper.createNewConversation(context, ref);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error creating conversation: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
+                },
+                tooltip: 'New Conversation',
               ),
             ],
           ),
@@ -202,6 +220,72 @@ class ConversationList extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error deleting conversation: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+}
+
+/// Helper class for ConversationList actions
+class ConversationListHelper {
+  static Future<void> createNewConversation(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      // Get services
+      final db = ref.read(appDatabaseProvider);
+      final authService = ref.read(googleAuthServiceProvider);
+      final sheetsService = SheetsService(authService);
+      final gmailService = GmailService(authService);
+      final loggingService = LoggingService(db);
+      final requestService = RequestService(
+        db,
+        sheetsService,
+        authService,
+        gmailService,
+        loggingService,
+      );
+
+      // Create conversation with default name
+      final conversationId = await requestService.createConversation(
+        title: 'New Conversation',
+      );
+
+      // Close loading dialog
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Refresh conversations list
+      ref.invalidate(conversationsProvider);
+
+      // Select the new conversation
+      ref.read(selectedConversationIdProvider.notifier).state = conversationId;
+
+      // The auto-introduction will kick in automatically
+    } catch (e) {
+      // Close loading dialog if still open
+      if (context.mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+
+      // Show error
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error creating conversation: $e'),
             backgroundColor: Colors.red,
           ),
         );

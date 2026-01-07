@@ -2801,6 +2801,375 @@ class CredentialsCompanion extends UpdateCompanion<Credential> {
   }
 }
 
+class $AIChatMessagesTable extends AIChatMessages
+    with TableInfo<$AIChatMessagesTable, AIChatMessage> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $AIChatMessagesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _conversationIdMeta = const VerificationMeta(
+    'conversationId',
+  );
+  @override
+  late final GeneratedColumn<String> conversationId = GeneratedColumn<String>(
+    'conversation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+    'role',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _contentMeta = const VerificationMeta(
+    'content',
+  );
+  @override
+  late final GeneratedColumn<String> content = GeneratedColumn<String>(
+    'content',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<DateTime> timestamp = GeneratedColumn<DateTime>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    conversationId,
+    role,
+    content,
+    timestamp,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'a_i_chat_messages';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<AIChatMessage> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('conversation_id')) {
+      context.handle(
+        _conversationIdMeta,
+        conversationId.isAcceptableOrUnknown(
+          data['conversation_id']!,
+          _conversationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_conversationIdMeta);
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+        _roleMeta,
+        role.isAcceptableOrUnknown(data['role']!, _roleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_roleMeta);
+    }
+    if (data.containsKey('content')) {
+      context.handle(
+        _contentMeta,
+        content.isAcceptableOrUnknown(data['content']!, _contentMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_contentMeta);
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  AIChatMessage map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return AIChatMessage(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}id'],
+          )!,
+      conversationId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}conversation_id'],
+          )!,
+      role:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}role'],
+          )!,
+      content:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}content'],
+          )!,
+      timestamp:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}timestamp'],
+          )!,
+    );
+  }
+
+  @override
+  $AIChatMessagesTable createAlias(String alias) {
+    return $AIChatMessagesTable(attachedDatabase, alias);
+  }
+}
+
+class AIChatMessage extends DataClass implements Insertable<AIChatMessage> {
+  final String id;
+  final String conversationId;
+  final String role;
+  final String content;
+  final DateTime timestamp;
+  const AIChatMessage({
+    required this.id,
+    required this.conversationId,
+    required this.role,
+    required this.content,
+    required this.timestamp,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['conversation_id'] = Variable<String>(conversationId);
+    map['role'] = Variable<String>(role);
+    map['content'] = Variable<String>(content);
+    map['timestamp'] = Variable<DateTime>(timestamp);
+    return map;
+  }
+
+  AIChatMessagesCompanion toCompanion(bool nullToAbsent) {
+    return AIChatMessagesCompanion(
+      id: Value(id),
+      conversationId: Value(conversationId),
+      role: Value(role),
+      content: Value(content),
+      timestamp: Value(timestamp),
+    );
+  }
+
+  factory AIChatMessage.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return AIChatMessage(
+      id: serializer.fromJson<String>(json['id']),
+      conversationId: serializer.fromJson<String>(json['conversationId']),
+      role: serializer.fromJson<String>(json['role']),
+      content: serializer.fromJson<String>(json['content']),
+      timestamp: serializer.fromJson<DateTime>(json['timestamp']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'conversationId': serializer.toJson<String>(conversationId),
+      'role': serializer.toJson<String>(role),
+      'content': serializer.toJson<String>(content),
+      'timestamp': serializer.toJson<DateTime>(timestamp),
+    };
+  }
+
+  AIChatMessage copyWith({
+    String? id,
+    String? conversationId,
+    String? role,
+    String? content,
+    DateTime? timestamp,
+  }) => AIChatMessage(
+    id: id ?? this.id,
+    conversationId: conversationId ?? this.conversationId,
+    role: role ?? this.role,
+    content: content ?? this.content,
+    timestamp: timestamp ?? this.timestamp,
+  );
+  AIChatMessage copyWithCompanion(AIChatMessagesCompanion data) {
+    return AIChatMessage(
+      id: data.id.present ? data.id.value : this.id,
+      conversationId:
+          data.conversationId.present
+              ? data.conversationId.value
+              : this.conversationId,
+      role: data.role.present ? data.role.value : this.role,
+      content: data.content.present ? data.content.value : this.content,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AIChatMessage(')
+          ..write('id: $id, ')
+          ..write('conversationId: $conversationId, ')
+          ..write('role: $role, ')
+          ..write('content: $content, ')
+          ..write('timestamp: $timestamp')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, conversationId, role, content, timestamp);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is AIChatMessage &&
+          other.id == this.id &&
+          other.conversationId == this.conversationId &&
+          other.role == this.role &&
+          other.content == this.content &&
+          other.timestamp == this.timestamp);
+}
+
+class AIChatMessagesCompanion extends UpdateCompanion<AIChatMessage> {
+  final Value<String> id;
+  final Value<String> conversationId;
+  final Value<String> role;
+  final Value<String> content;
+  final Value<DateTime> timestamp;
+  final Value<int> rowid;
+  const AIChatMessagesCompanion({
+    this.id = const Value.absent(),
+    this.conversationId = const Value.absent(),
+    this.role = const Value.absent(),
+    this.content = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  AIChatMessagesCompanion.insert({
+    required String id,
+    required String conversationId,
+    required String role,
+    required String content,
+    this.timestamp = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       conversationId = Value(conversationId),
+       role = Value(role),
+       content = Value(content);
+  static Insertable<AIChatMessage> custom({
+    Expression<String>? id,
+    Expression<String>? conversationId,
+    Expression<String>? role,
+    Expression<String>? content,
+    Expression<DateTime>? timestamp,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (conversationId != null) 'conversation_id': conversationId,
+      if (role != null) 'role': role,
+      if (content != null) 'content': content,
+      if (timestamp != null) 'timestamp': timestamp,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  AIChatMessagesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? conversationId,
+    Value<String>? role,
+    Value<String>? content,
+    Value<DateTime>? timestamp,
+    Value<int>? rowid,
+  }) {
+    return AIChatMessagesCompanion(
+      id: id ?? this.id,
+      conversationId: conversationId ?? this.conversationId,
+      role: role ?? this.role,
+      content: content ?? this.content,
+      timestamp: timestamp ?? this.timestamp,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (conversationId.present) {
+      map['conversation_id'] = Variable<String>(conversationId.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (content.present) {
+      map['content'] = Variable<String>(content.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<DateTime>(timestamp.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('AIChatMessagesCompanion(')
+          ..write('id: $id, ')
+          ..write('conversationId: $conversationId, ')
+          ..write('role: $role, ')
+          ..write('content: $content, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2812,6 +3181,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $ProcessedMessagesTable processedMessages =
       $ProcessedMessagesTable(this);
   late final $CredentialsTable credentials = $CredentialsTable(this);
+  late final $AIChatMessagesTable aIChatMessages = $AIChatMessagesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2823,6 +3193,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     activityLog,
     processedMessages,
     credentials,
+    aIChatMessages,
   ];
 }
 
@@ -4328,6 +4699,221 @@ typedef $$CredentialsTableProcessedTableManager =
       Credential,
       PrefetchHooks Function()
     >;
+typedef $$AIChatMessagesTableCreateCompanionBuilder =
+    AIChatMessagesCompanion Function({
+      required String id,
+      required String conversationId,
+      required String role,
+      required String content,
+      Value<DateTime> timestamp,
+      Value<int> rowid,
+    });
+typedef $$AIChatMessagesTableUpdateCompanionBuilder =
+    AIChatMessagesCompanion Function({
+      Value<String> id,
+      Value<String> conversationId,
+      Value<String> role,
+      Value<String> content,
+      Value<DateTime> timestamp,
+      Value<int> rowid,
+    });
+
+class $$AIChatMessagesTableFilterComposer
+    extends Composer<_$AppDatabase, $AIChatMessagesTable> {
+  $$AIChatMessagesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$AIChatMessagesTableOrderingComposer
+    extends Composer<_$AppDatabase, $AIChatMessagesTable> {
+  $$AIChatMessagesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get role => $composableBuilder(
+    column: $table.role,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get content => $composableBuilder(
+    column: $table.content,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$AIChatMessagesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $AIChatMessagesTable> {
+  $$AIChatMessagesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get content =>
+      $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+}
+
+class $$AIChatMessagesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $AIChatMessagesTable,
+          AIChatMessage,
+          $$AIChatMessagesTableFilterComposer,
+          $$AIChatMessagesTableOrderingComposer,
+          $$AIChatMessagesTableAnnotationComposer,
+          $$AIChatMessagesTableCreateCompanionBuilder,
+          $$AIChatMessagesTableUpdateCompanionBuilder,
+          (
+            AIChatMessage,
+            BaseReferences<_$AppDatabase, $AIChatMessagesTable, AIChatMessage>,
+          ),
+          AIChatMessage,
+          PrefetchHooks Function()
+        > {
+  $$AIChatMessagesTableTableManager(
+    _$AppDatabase db,
+    $AIChatMessagesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$AIChatMessagesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () =>
+                  $$AIChatMessagesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$AIChatMessagesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> conversationId = const Value.absent(),
+                Value<String> role = const Value.absent(),
+                Value<String> content = const Value.absent(),
+                Value<DateTime> timestamp = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AIChatMessagesCompanion(
+                id: id,
+                conversationId: conversationId,
+                role: role,
+                content: content,
+                timestamp: timestamp,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String conversationId,
+                required String role,
+                required String content,
+                Value<DateTime> timestamp = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => AIChatMessagesCompanion.insert(
+                id: id,
+                conversationId: conversationId,
+                role: role,
+                content: content,
+                timestamp: timestamp,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$AIChatMessagesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $AIChatMessagesTable,
+      AIChatMessage,
+      $$AIChatMessagesTableFilterComposer,
+      $$AIChatMessagesTableOrderingComposer,
+      $$AIChatMessagesTableAnnotationComposer,
+      $$AIChatMessagesTableCreateCompanionBuilder,
+      $$AIChatMessagesTableUpdateCompanionBuilder,
+      (
+        AIChatMessage,
+        BaseReferences<_$AppDatabase, $AIChatMessagesTable, AIChatMessage>,
+      ),
+      AIChatMessage,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4344,4 +4930,6 @@ class $AppDatabaseManager {
       $$ProcessedMessagesTableTableManager(_db, _db.processedMessages);
   $$CredentialsTableTableManager get credentials =>
       $$CredentialsTableTableManager(_db, _db.credentials);
+  $$AIChatMessagesTableTableManager get aIChatMessages =>
+      $$AIChatMessagesTableTableManager(_db, _db.aIChatMessages);
 }

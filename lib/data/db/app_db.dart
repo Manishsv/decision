@@ -98,6 +98,19 @@ class Credentials extends Table {
   Set<Column> get primaryKey => {key};
 }
 
+/// AI Chat Messages table
+/// Stores conversation history with the AI Agent for each conversation
+class AIChatMessages extends Table {
+  TextColumn get id => text()(); // Unique message ID
+  TextColumn get conversationId => text()(); // Links to conversation
+  TextColumn get role => text()(); // 'user' or 'assistant'
+  TextColumn get content => text()(); // Message content
+  DateTimeColumn get timestamp => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Conversations,
@@ -106,13 +119,14 @@ class Credentials extends Table {
     ActivityLog,
     ProcessedMessages,
     Credentials,
+    AIChatMessages,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 6; // Bumped to 6 to force migration (clean database)
+  int get schemaVersion => 7; // Bumped to 7 to add AI chat messages table
 
   @override
   MigrationStrategy get migration {
@@ -189,6 +203,10 @@ class AppDatabase extends _$AppDatabase {
           }
 
           // Step 3: No data migration needed - tables are recreated cleanly
+        }
+        if (from < 7) {
+          // Add AI Chat Messages table in version 7
+          await m.createTable(aIChatMessages);
         }
       },
     );

@@ -8,6 +8,7 @@ import 'package:decision_agent/services/parsing_service.dart';
 import 'package:decision_agent/services/logging_service.dart';
 import 'package:decision_agent/domain/models.dart' as models;
 import 'package:decision_agent/domain/request_schema.dart';
+import 'package:googleapis/gmail/v1.dart' as gmail;
 
 /// Result of ingestion operation
 class IngestionResult {
@@ -95,8 +96,37 @@ class IngestionService {
         return IngestionResult(ingestedCount: 0, errorCount: 0, errors: []);
       }
 
-      // Process each message
+      // Filter out original request emails (from owner) and sort by timestamp (oldest first)
+      // This ensures newer replies override older ones when processed sequentially
+      final filteredMessages = <gmail.Message>[];
       for (final message in messages) {
+        final fromEmail = _gmailService.getFromEmail(message) ?? '';
+        // Skip messages from the request owner (these are the original request emails, not replies)
+        if (fromEmail.toLowerCase() == request.ownerEmail.toLowerCase()) {
+          continue;
+        }
+        filteredMessages.add(message);
+      }
+
+      // Sort by timestamp (oldest first) to ensure chronological processing
+      // When processing sequentially, newer messages will override older ones
+      filteredMessages.sort((a, b) {
+        final timestampA = _gmailService.getInternalDate(a) ?? DateTime(1970);
+        final timestampB = _gmailService.getInternalDate(b) ?? DateTime(1970);
+        return timestampA.compareTo(timestampB);
+      });
+
+      if (filteredMessages.isEmpty) {
+        await _loggingService.logActivity(
+          requestId,
+          models.ActivityType.ingestionCheck,
+          {'message': 'No reply messages found (only original request emails)'},
+        );
+        return IngestionResult(ingestedCount: 0, errorCount: 0, errors: []);
+      }
+
+      // Process each message in chronological order
+      for (final message in filteredMessages) {
         try {
           final messageId = message.id ?? '';
 
@@ -120,6 +150,24 @@ class IngestionService {
             continue; // Skip messages with no body
           }
 
+          // Check if we should skip this message because a newer one was already processed
+          final recipientStatuses = await _db.getRecipientStatuses(requestId);
+          final recipientStatus =
+              recipientStatuses
+                  .where(
+                    (s) => s.email.toLowerCase() == fromEmail.toLowerCase(),
+                  )
+                  .firstOrNull;
+          if (recipientStatus != null &&
+              recipientStatus.lastResponseAt != null &&
+              timestamp != null &&
+              timestamp.isBefore(recipientStatus.lastResponseAt!)) {
+            // This message is older than one we've already processed for this recipient
+            // Skip it to avoid overwriting newer data
+            await _db.markMessageProcessed(requestId, messageId);
+            continue;
+          }
+
           // Parse the table reply
           final parseResult = _parsingService.parseTableReply(body, schema);
 
@@ -128,7 +176,8 @@ class IngestionService {
           await _db.markMessageProcessed(requestId, messageId);
 
           if (parseResult.success && parseResult.rows.isNotEmpty) {
-            // Success: append rows to sheet
+            // Success: update or insert rows in sheet
+            final sheetRows = <List<Object?>>[];
             for (final row in parseResult.rows) {
               // Convert row to sheet format
               final sheetRow = _convertRowToSheetFormat(
@@ -136,18 +185,24 @@ class IngestionService {
                 schema,
                 fromEmail,
                 messageId,
+                requestId,
                 timestamp,
               );
-
-              // Append to sheet (use conversation's sheetId)
-              await _sheetsService.appendRows(conversation.sheetId, [sheetRow]);
+              sheetRows.add(sheetRow);
             }
+
+            // Update or insert rows (will update existing rows by fromEmail+requestId)
+            await _sheetsService.updateOrInsertRows(
+              conversation.sheetId,
+              sheetRows,
+              requestId,
+            );
 
             // Update recipient status - parsing succeeded
             await _updateRecipientStatus(
               requestId,
               fromEmail,
-              messageId ?? '',
+              messageId,
               timestamp,
               models.RecipientState.responded,
               null, // No error - parsing succeeded
@@ -178,7 +233,7 @@ class IngestionService {
             await _updateRecipientStatus(
               requestId,
               fromEmail,
-              messageId ?? '',
+              messageId,
               timestamp,
               models.RecipientState.error,
               errorNote,
@@ -225,28 +280,50 @@ class IngestionService {
 
   /// Convert parsed row to sheet row format
   ///
-  /// Sheet format: [__receivedAt, __fromEmail, __messageId, __parseStatus, ...schema columns]
+  /// New format: [schema columns..., __fromEmail, __version, __receivedAt, __messageId, __requestId]
   List<Object?> _convertRowToSheetFormat(
     Map<String, dynamic> row,
     RequestSchema schema,
     String fromEmail,
     String messageId,
+    String requestId,
     DateTime? timestamp,
   ) {
-    final sheetRow = <Object?>[
-      timestamp?.toIso8601String() ?? DateTime.now().toIso8601String(),
-      fromEmail,
-      messageId,
-      'OK',
-    ];
+    final sheetRow = <Object?>[];
 
-    // Add schema columns in order
+    // Add schema columns first
     for (final column in schema.columns) {
       final value = row[column.name];
       sheetRow.add(value);
     }
 
+    // Add metadata columns at the end (rightmost)
+    final receivedAt = timestamp ?? DateTime.now();
+    sheetRow.addAll([
+      fromEmail, // __fromEmail
+      1, // __version (will be incremented if row exists)
+      _formatRelativeTime(receivedAt), // __receivedAt (human-readable)
+      messageId, // __messageId
+      requestId, // __requestId
+    ]);
+
     return sheetRow;
+  }
+
+  /// Format timestamp as human-readable relative time
+  String _formatRelativeTime(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays} day${difference.inDays == 1 ? '' : 's'} ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} hour${difference.inHours == 1 ? '' : 's'} ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minute${difference.inMinutes == 1 ? '' : 's'} ago';
+    } else {
+      return 'Just now';
+    }
   }
 
   /// Update recipient status

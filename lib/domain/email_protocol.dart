@@ -22,39 +22,55 @@ String buildReminderSubject(DataRequest request) {
 }
 
 /// Generate email body for a data request
-/// Includes human instructions, machine-readable block, and copy/paste table
+/// Clean, user-friendly format with clear instructions
 String buildRequestEmailBody(DataRequest request) {
   final buffer = StringBuffer();
   
-  // Human-readable instructions
+  // Validate schema has columns
+  if (request.schema.columns.isEmpty) {
+    throw Exception('Request schema is empty. Cannot generate email body.');
+  }
+  
+  // Greeting
   buffer.writeln('Hello,');
   buffer.writeln();
-  buffer.writeln('We are requesting data from you. Please fill out the table below and reply to this email.');
+  
+  // Main request message
+  buffer.writeln('We are requesting the following information from you. Please fill out the table below and reply to this email.');
   buffer.writeln();
   
+  // Description/instructions if provided
   if (request.description != null && request.description!.isNotEmpty) {
     buffer.writeln(request.description);
     buffer.writeln();
   }
   
-  buffer.writeln('Due date: ${_formatDate(request.dueAt)}');
+  // Due date
+  buffer.writeln('**Due date:** ${_formatDate(request.dueAt)}');
   buffer.writeln();
   buffer.writeln('---');
   buffer.writeln();
   
-  // Machine-readable block (for parsing)
-  buffer.writeln('```data-request');
-  buffer.writeln('requestId: ${request.requestId}');
-  buffer.writeln('schema: ${_schemaToJsonString(request.schema)}');
-  buffer.writeln('```');
+  // Instructions for filling the table
+  buffer.writeln('Please fill out the table below with your data:');
+  buffer.writeln('1. Copy ONLY the header row (the first row with column names)');
+  buffer.writeln('2. Add your data row below it with your actual values');
+  buffer.writeln('3. Reply to this email with the completed table');
+  buffer.writeln();
+  buffer.writeln('Example format (replace with your actual data):');
   buffer.writeln();
   
-  // Copy/paste table with headers
-  buffer.writeln('Please fill out this table and reply:');
-  buffer.writeln();
+  // Table with example row - but make it clear it's an example
   buffer.writeln(_buildTable(request.schema));
   buffer.writeln();
-  buffer.writeln('Thank you!');
+  buffer.writeln('Note: The row above is just an example. Replace the example values with your actual data.');
+  buffer.writeln();
+  
+  // Closing
+  buffer.writeln('Thank you for your cooperation!');
+  buffer.writeln();
+  buffer.writeln('---');
+  buffer.writeln('Request ID: ${request.requestId}');
   
   return buffer.toString();
 }
@@ -65,10 +81,10 @@ String buildReminderEmailBody(DataRequest request) {
   
   buffer.writeln('Hello,');
   buffer.writeln();
-  buffer.writeln('This is a reminder that we are still waiting for your response to our data request.');
+  buffer.writeln('This is a friendly reminder that we are still waiting for your response to our data request.');
   buffer.writeln();
-  buffer.writeln('Request: ${request.title}');
-  buffer.writeln('Due date: ${_formatDate(request.dueAt)}');
+  buffer.writeln('**Request:** ${request.title}');
+  buffer.writeln('**Due date:** ${_formatDate(request.dueAt)}');
   buffer.writeln();
   
   if (request.description != null && request.description!.isNotEmpty) {
@@ -79,24 +95,22 @@ String buildReminderEmailBody(DataRequest request) {
   buffer.writeln('---');
   buffer.writeln();
   
-  // Machine-readable block
-  buffer.writeln('```data-request');
-  buffer.writeln('requestId: ${request.requestId}');
-  buffer.writeln('schema: ${_schemaToJsonString(request.schema)}');
-  buffer.writeln('```');
+  // Instructions
+  buffer.writeln('Please fill out the table below with your data and reply to this email:');
   buffer.writeln();
   
-  // Copy/paste table
-  buffer.writeln('Please fill out this table and reply:');
-  buffer.writeln();
+  // Table
   buffer.writeln(_buildTable(request.schema));
   buffer.writeln();
   buffer.writeln('Thank you!');
+  buffer.writeln();
+  buffer.writeln('---');
+  buffer.writeln('Request ID: ${request.requestId}');
   
   return buffer.toString();
 }
 
-/// Build markdown-style ASCII table
+/// Build markdown-style ASCII table with example row
 String _buildTable(RequestSchema schema) {
   if (schema.columns.isEmpty) {
     return '';
@@ -104,15 +118,26 @@ String _buildTable(RequestSchema schema) {
   
   final buffer = StringBuffer();
   
-  // Header row
+  // Header row - use exact column names from schema
   final headers = schema.columns.map((col) => col.name).toList();
   buffer.writeln(_buildTableRow(headers));
   
   // Separator row
   buffer.writeln(_buildTableSeparator(headers.length));
   
-  // Empty data row (for recipient to fill)
-  buffer.writeln(_buildTableRow(List.filled(headers.length, '')));
+  // Example row with placeholders - but make it clear it's an example
+  // Use shorter, clearer placeholders
+  final exampleRow = schema.columns.map((col) {
+    switch (col.type) {
+      case ColumnType.stringType:
+        return 'Your value here';
+      case ColumnType.numberType:
+        return '12345';
+      case ColumnType.dateType:
+        return '2026-01-15';
+    }
+  }).toList();
+  buffer.writeln(_buildTableRow(exampleRow));
   
   return buffer.toString();
 }

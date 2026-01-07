@@ -12,6 +12,7 @@ import 'package:decision_agent/services/parsing_service.dart';
 import 'package:decision_agent/services/ingestion_service.dart';
 import 'package:decision_agent/services/request_service.dart';
 import 'package:decision_agent/domain/models.dart' as models;
+import 'package:decision_agent/features/home/ai_chat_panel.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -68,16 +69,30 @@ class ConversationPage extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inbox, size: 64, color: Colors.grey[400]),
+            Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
-              'Select a conversation',
-              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+              'AI Agent',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
+              ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Choose a conversation from the list to view details',
+              'Select a conversation to interact with the AI Agent',
               style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Coming soon: Ask questions, get insights, and execute actions',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[400],
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -86,53 +101,33 @@ class ConversationPage extends ConsumerWidget {
 
     // Get conversation details
     final conversationsAsync = ref.watch(conversationsProvider);
-    final conversation = conversationsAsync.when(
-      data:
-          (conversations) => conversations.firstWhere(
+
+    return conversationsAsync.when(
+      data: (conversations) {
+        try {
+          final conversation = conversations.firstWhere(
             (c) => c.id == selectedId,
-            orElse: () => throw Exception('Conversation not found'),
-          ),
-      loading: () => null,
-      error: (_, __) => null,
-    );
-
-    if (conversation == null) {
-      return const Center(child: CircularProgressIndicator());
-    }
-
-    // Get requests for this conversation
-    final requestsAsync = ref.watch(
-      conversationRequestsProvider(conversation.id),
-    );
-
-    return requestsAsync.when(
-      data: (requests) {
-        if (requests.isEmpty) {
-          return const Center(child: Text('No requests in this conversation'));
+          );
+          return _buildConversationContent(conversation, ref);
+        } catch (e) {
+          // Conversation not found - might be newly created, refresh and try again
+          ref.invalidate(conversationsProvider);
+          return const Center(child: CircularProgressIndicator());
         }
-        // Use the most recent request (first in list, ordered by dueAt desc)
-        final request = requests.first;
-        final requestId = request.requestId;
-
-        // Get activity logs and recipient statuses for the most recent request
-        final activityLogsAsync = ref.watch(activityLogsProvider(requestId));
-        final recipientStatusesAsync = ref.watch(
-          recipientStatusesProvider(requestId),
-        );
-
-        return _buildRequestView(
-          context,
-          ref,
-          conversation,
-          request,
-          requestId,
-          activityLogsAsync,
-          recipientStatusesAsync,
-        );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stack) => Center(child: Text('Error: $error')),
+      error:
+          (error, stack) =>
+              Center(child: Text('Error loading conversation: $error')),
     );
+  }
+
+  Widget _buildConversationContent(
+    models.Conversation conversation,
+    WidgetRef ref,
+  ) {
+    // Show AI Agent chat interface
+    return const AIChatPanel();
   }
 
   Widget _buildRequestView(
