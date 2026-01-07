@@ -88,9 +88,9 @@ ValidationResult validateRequired(String value, [String? fieldName]) {
 /// Validate that a string has minimum length
 ValidationResult validateMinLength(
   String value,
-  int minLength,
-  [String? fieldName],
-) {
+  int minLength, [
+  String? fieldName,
+]) {
   if (value.trim().length < minLength) {
     final field = fieldName ?? 'Field';
     return ValidationResult.failure(
