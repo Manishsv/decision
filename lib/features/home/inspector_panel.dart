@@ -97,6 +97,7 @@ final conversationParticipantsProvider = FutureProvider.family<
 });
 
 /// Provider for all activity logs across all requests in a conversation
+/// Limits to most recent 200 logs total for performance
 final conversationActivityLogsProvider =
     FutureProvider.family<List<models.ActivityLogEntry>, String>((
       ref,
@@ -108,17 +109,26 @@ final conversationActivityLogsProvider =
       // Get all requests for this conversation
       final requests = await db.getRequestsByConversation(conversationId);
 
-      // Get all activity logs for all requests
+      // Get activity logs for all requests (limit per request to prevent too many)
+      // Use a smaller limit per request so total doesn't exceed ~200 logs
+      final limitPerRequest = requests.isEmpty
+          ? 50
+          : (200 / requests.length).ceil().clamp(10, 100);
+
       final allLogs = <models.ActivityLogEntry>[];
       for (final request in requests) {
-        final logs = await loggingService.getActivityLogs(request.requestId);
+        final logs = await loggingService.getActivityLogs(
+          request.requestId,
+          limit: limitPerRequest,
+        );
         allLogs.addAll(logs);
       }
 
       // Sort by timestamp (most recent first)
       allLogs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-      return allLogs;
+      // Limit total to 200 most recent
+      return allLogs.take(200).toList();
     });
 
 class InspectorPanel extends ConsumerStatefulWidget {
@@ -1437,9 +1447,7 @@ Future<void> _handleAddParticipant(
     }
   } catch (e) {
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(ErrorHandler.getUserFriendlyMessage(e)),
           backgroundColor: Colors.red,
@@ -1507,9 +1515,7 @@ Future<void> _removeParticipant(
     }
   } catch (e) {
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(ErrorHandler.getUserFriendlyMessage(e)),
           backgroundColor: Colors.red,
