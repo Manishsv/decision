@@ -262,14 +262,15 @@ class AppDatabase extends _$AppDatabase {
       );
 
       // Index on AIChatMessages.conversationId
+      // Note: Actual table name is a_i_chat_messages (from Drift generated code)
       await executor.runCustom(
-        'CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_conversation_id ON ai_chat_messages(conversation_id);',
+        'CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_conversation_id ON a_i_chat_messages(conversation_id);',
         [],
       );
 
       // Index on AIChatMessages.timestamp (for sorting)
       await executor.runCustom(
-        'CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_timestamp ON ai_chat_messages(timestamp);',
+        'CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_timestamp ON a_i_chat_messages(timestamp);',
         [],
       );
 
