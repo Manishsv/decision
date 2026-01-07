@@ -1,6 +1,6 @@
-/// Input validation utilities
-/// 
-/// Provides functions for validating user inputs with user-friendly error messages
+// Input validation utilities
+// 
+// Provides functions for validating user inputs with user-friendly error messages
 
 /// Email validation regex - RFC 5322 compliant (simplified)
 final _emailRegex = RegExp(
