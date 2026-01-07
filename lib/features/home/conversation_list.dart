@@ -144,7 +144,11 @@ class ConversationList extends ConsumerWidget {
     }
   }
 
-  Future<void> _archiveConversation(WidgetRef ref, String conversationId) async {
+  Future<void> _archiveConversation(
+    BuildContext context,
+    WidgetRef ref,
+    String conversationId,
+  ) async {
     try {
       final db = ref.read(appDatabaseProvider);
       await db.archiveConversation(conversationId);
