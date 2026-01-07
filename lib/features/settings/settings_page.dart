@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:decision_agent/features/settings/settings_controller.dart';
+import 'package:decision_agent/utils/error_handling.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -49,8 +50,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (state.hasError) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: ${state.error}'),
+            content: Text(ErrorHandler.getUserFriendlyMessage(state.error!)),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       } else {
@@ -150,9 +152,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(color: Colors.red[200]!),
                       ),
-                      child: Text(
-                        'Error: ${state.error}',
-                        style: TextStyle(color: Colors.red[800]),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            ErrorHandler.getUserFriendlyMessage(state.error!),
+                            style: TextStyle(color: Colors.red[800]),
+                          ),
+                          if (ErrorHandler.getRecoverySuggestion(state.error!) != null) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              ErrorHandler.getRecoverySuggestion(state.error!)!,
+                              style: TextStyle(
+                                color: Colors.red[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ),
