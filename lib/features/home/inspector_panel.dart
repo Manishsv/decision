@@ -22,6 +22,7 @@ import 'package:googleapis/gmail/v1.dart' as gmail;
 import 'package:decision_agent/domain/models.dart' as models;
 import 'package:decision_agent/domain/request_schema.dart';
 import 'package:decision_agent/features/home/conversation_page.dart';
+import 'package:decision_agent/utils/error_handling.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
@@ -569,7 +570,10 @@ class _OverviewTab extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error:
           (error, stack) => Center(
-            child: Text('Error: $error', style: const TextStyle(fontSize: 12)),
+            child: Text(
+              ErrorHandler.getUserFriendlyMessage(error),
+              style: const TextStyle(fontSize: 12),
+            ),
           ),
     );
   }
@@ -891,8 +895,12 @@ class _OverviewTabHelper {
     } catch (e) {
       if (context.mounted) {
         Navigator.of(context).pop();
+        final errorMessage = ErrorHandler.getUserFriendlyMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -1032,8 +1040,12 @@ class _OverviewTabHelper {
     } catch (e) {
       if (context.mounted) {
         Navigator.of(context).pop();
+        final errorMessage = ErrorHandler.getUserFriendlyMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
@@ -1146,7 +1158,7 @@ class _OverviewTabHelper {
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Error renaming conversation: $e'),
+              content: Text(ErrorHandler.getUserFriendlyMessage(e)),
               backgroundColor: Colors.red,
             ),
           );
@@ -1283,7 +1295,10 @@ class _ParticipantsTab extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error:
           (error, stack) => Center(
-            child: Text('Error: $error', style: const TextStyle(fontSize: 12)),
+            child: Text(
+              ErrorHandler.getUserFriendlyMessage(error),
+              style: const TextStyle(fontSize: 12),
+            ),
           ),
     );
   }
@@ -1778,7 +1793,10 @@ class _SchemaTab extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error:
           (error, stack) => Center(
-            child: Text('Error: $error', style: const TextStyle(fontSize: 12)),
+            child: Text(
+              ErrorHandler.getUserFriendlyMessage(error),
+              style: const TextStyle(fontSize: 12),
+            ),
           ),
     );
   }
@@ -1967,7 +1985,10 @@ class _ActivityTab extends ConsumerWidget {
       loading: () => const Center(child: CircularProgressIndicator()),
       error:
           (error, stack) => Center(
-            child: Text('Error: $error', style: const TextStyle(fontSize: 12)),
+            child: Text(
+              ErrorHandler.getUserFriendlyMessage(error),
+              style: const TextStyle(fontSize: 12),
+            ),
           ),
     );
   }

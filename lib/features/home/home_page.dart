@@ -13,6 +13,7 @@ import 'package:decision_agent/services/request_service.dart';
 import 'package:decision_agent/data/google/sheets_service.dart';
 import 'package:decision_agent/data/google/gmail_service.dart';
 import 'package:decision_agent/services/logging_service.dart';
+import 'package:decision_agent/utils/error_handling.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -79,11 +80,12 @@ class _HomePageState extends ConsumerState<HomePage> {
         Navigator.of(context).pop();
       }
 
-      // Show error
+      // Show user-friendly error
       if (context.mounted) {
+        final errorMessage = ErrorHandler.getUserFriendlyMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error creating conversation: $e'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
           ),
         );

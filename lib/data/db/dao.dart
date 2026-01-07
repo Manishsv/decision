@@ -15,13 +15,26 @@ extension AppDatabaseDao on AppDatabase {
     await into(conversations).insert(conversation, mode: InsertMode.replace);
   }
 
+  /// Get conversations
+  /// [includeArchived] - Whether to include archived conversations
+  /// [limit] - Maximum number of conversations to return (null for all)
+  /// [offset] - Number of conversations to skip (for pagination)
+  /// Returns list of conversations, ordered by updatedAt descending
   Future<List<models.Conversation>> getConversations({
     bool includeArchived = false,
+    int? limit,
+    int? offset,
   }) async {
     var query = select(conversations);
     if (!includeArchived) {
       query = query..where((c) => c.archived.equals(false));
     }
+    query = query..orderBy([(c) => OrderingTerm.desc(c.updatedAt)]);
+    
+    if (limit != null) {
+      query = query..limit(limit, offset: offset ?? 0);
+    }
+    
     final rows = await query.get();
     return rows
         .map(
@@ -342,6 +355,34 @@ extension AppDatabaseDao on AppDatabase {
         .toList();
   }
 
+  /// Get recipient statuses for multiple request IDs in a single query
+  /// This is more efficient than calling getRecipientStatuses multiple times
+  Future<List<models.RecipientStatus>> getRecipientStatusesBatch(
+    List<String> requestIds,
+  ) async {
+    if (requestIds.isEmpty) {
+      return [];
+    }
+    
+    // Use IN clause for batch query
+    final rows = await (select(recipientStatusTable)
+          ..where((r) => r.requestId.isIn(requestIds))).get();
+    
+    return rows
+        .map(
+          (row) => models.RecipientStatus(
+            requestId: row.requestId,
+            email: row.email,
+            status: models.RecipientState.values[row.status],
+            lastMessageId: row.lastMessageId,
+            lastResponseAt: row.lastResponseAt,
+            reminderSentAt: row.reminderSentAt,
+            note: row.note,
+          ),
+        )
+        .toList();
+  }
+
   /// Delete a recipient status entry
   Future<void> deleteRecipientStatus(String requestId, String email) async {
     await (delete(recipientStatusTable)..where(
@@ -362,14 +403,23 @@ extension AppDatabaseDao on AppDatabase {
     );
   }
 
+  /// Get activity logs for a request
+  /// [requestId] - Request ID
+  /// [limit] - Maximum number of logs to return (default: 100, null for all)
+  /// Returns list of activity log entries, most recent first
   Future<List<models.ActivityLogEntry>> getActivityLogs(
-    String requestId,
-  ) async {
-    final rows =
-        await (select(activityLog)
-              ..where((a) => a.requestId.equals(requestId))
-              ..orderBy([(a) => OrderingTerm.desc(a.timestamp)]))
-            .get();
+    String requestId, {
+    int? limit,
+  }) async {
+    var query = select(activityLog)
+      ..where((a) => a.requestId.equals(requestId))
+      ..orderBy([(a) => OrderingTerm.desc(a.timestamp)]);
+    
+    if (limit != null) {
+      query = query..limit(limit);
+    }
+    
+    final rows = await query.get();
 
     return rows
         .map(

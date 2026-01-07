@@ -221,67 +221,67 @@ class AppDatabase extends _$AppDatabase {
   /// Create database indexes for frequently queried columns
   Future<void> _createIndexes(Migrator m) async {
     final executor = m.database.executor;
-    
+
     // Index on Requests.conversationId (frequently queried)
     await executor.runCustom(
       'CREATE INDEX IF NOT EXISTS idx_requests_conversation_id ON requests(conversation_id);',
       [],
     );
-    
+
     // Index on Requests.templateRequestId (for iteration queries)
     await executor.runCustom(
       'CREATE INDEX IF NOT EXISTS idx_requests_template_id ON requests(template_request_id);',
       [],
     );
-    
+
     // Index on RecipientStatusTable.requestId
     await executor.runCustom(
       'CREATE INDEX IF NOT EXISTS idx_recipient_status_request_id ON recipient_status(request_id);',
       [],
     );
-    
+
     // Index on RecipientStatusTable.email (for participant lookups)
     await executor.runCustom(
       'CREATE INDEX IF NOT EXISTS idx_recipient_status_email ON recipient_status(email);',
       [],
     );
-    
+
     // Index on ActivityLog.requestId
     await executor.runCustom(
       'CREATE INDEX IF NOT EXISTS idx_activity_log_request_id ON activity_log(request_id);',
       [],
     );
-    
+
     // Index on ActivityLog.timestamp (for sorting)
     await executor.runCustom(
       'CREATE INDEX IF NOT EXISTS idx_activity_log_timestamp ON activity_log(timestamp DESC);',
       [],
     );
-    
+
     // Index on AIChatMessages.conversationId
     await executor.runCustom(
       'CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_conversation_id ON ai_chat_messages(conversation_id);',
       [],
     );
-    
+
     // Index on AIChatMessages.timestamp (for sorting)
     await executor.runCustom(
       'CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_timestamp ON ai_chat_messages(timestamp);',
       [],
     );
-    
+
     // Index on ProcessedMessages.requestId (for deduplication lookups)
     await executor.runCustom(
       'CREATE INDEX IF NOT EXISTS idx_processed_messages_request_id ON processed_messages(request_id);',
       [],
     );
-    
+
     // Index on Conversations.archived (for filtering)
     await executor.runCustom(
       'CREATE INDEX IF NOT EXISTS idx_conversations_archived ON conversations(archived);',
       [],
     );
-    
+
     // Composite index for recipient status lookups
     await executor.runCustom(
       'CREATE INDEX IF NOT EXISTS idx_recipient_status_request_email ON recipient_status(request_id, email);',

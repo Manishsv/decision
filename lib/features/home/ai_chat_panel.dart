@@ -8,6 +8,7 @@ import 'package:decision_agent/services/ai_agent_service.dart';
 import 'package:decision_agent/app/db_provider.dart';
 import 'package:decision_agent/data/db/dao.dart';
 import 'package:decision_agent/utils/ids.dart';
+import 'package:decision_agent/utils/error_handling.dart';
 import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -262,11 +263,12 @@ What would you like to start with?''';
       // Scroll to bottom
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     } catch (e) {
-      // Add error message
+      // Add user-friendly error message
       final errorMessageId = generateId();
+      final userFriendlyError = ErrorHandler.getUserFriendlyMessage(e);
       final errorMessage = AIMessage(
         role: 'assistant',
-        content: 'Error: $e',
+        content: userFriendlyError,
         timestamp: DateTime.now(),
       );
       

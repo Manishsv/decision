@@ -3,7 +3,6 @@
 /// Provides functions to convert technical errors into user-friendly messages
 /// and handle error scenarios gracefully.
 
-import 'package:http/http.dart' as http;
 import 'dart:io';
 
 /// Converts technical exceptions into user-friendly error messages

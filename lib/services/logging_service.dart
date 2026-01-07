@@ -41,10 +41,14 @@ class LoggingService {
 
   /// Get activity logs for a request
   /// [requestId] - Request ID
-  /// Returns list of activity log entries
-  Future<List<models.ActivityLogEntry>> getActivityLogs(String requestId) async {
+  /// [limit] - Maximum number of logs to return (default: 100)
+  /// Returns list of activity log entries, most recent first
+  Future<List<models.ActivityLogEntry>> getActivityLogs(
+    String requestId, {
+    int limit = 100,
+  }) async {
     try {
-      return await _db.getActivityLogs(requestId);
+      return await _db.getActivityLogs(requestId, limit: limit);
     } catch (e) {
       print('Error getting activity logs: $e');
       return [];

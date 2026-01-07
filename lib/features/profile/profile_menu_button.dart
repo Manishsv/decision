@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:decision_agent/app/auth_provider.dart';
+import 'package:decision_agent/utils/error_handling.dart';
 
 class ProfileMenuButton extends ConsumerWidget {
   const ProfileMenuButton({super.key});
@@ -183,9 +184,10 @@ class ProfileMenuButton extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
+        final errorMessage = ErrorHandler.getUserFriendlyMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error logging out: $e'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
           ),
         );

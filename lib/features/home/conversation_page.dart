@@ -14,6 +14,7 @@ import 'package:decision_agent/services/request_service.dart';
 import 'package:decision_agent/domain/models.dart' as models;
 import 'package:decision_agent/features/home/ai_chat_panel.dart';
 import 'package:decision_agent/features/home/conversation_list.dart';
+import 'package:decision_agent/utils/error_handling.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -116,9 +117,32 @@ class ConversationPage extends ConsumerWidget {
         }
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error:
-          (error, stack) =>
-              Center(child: Text('Error loading conversation: $error')),
+            error:
+                (error, stack) => Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+                        const SizedBox(height: 16),
+                        Text(
+                          ErrorHandler.getUserFriendlyMessage(error),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        if (ErrorHandler.getRecoverySuggestion(error) != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            ErrorHandler.getRecoverySuggestion(error)!,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
     );
   }
 
@@ -629,15 +653,15 @@ class _RequestView extends ConsumerWidget {
                       ),
                       // Show "Send Again" button if there are requests
                       ElevatedButton.icon(
-                          onPressed:
-                              () => _showSendAgainDialog(context, ref, request),
-                          icon: const Icon(Icons.repeat, size: 16),
-                          label: const Text('Send Again'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
-                          ),
+                        onPressed:
+                            () => _showSendAgainDialog(context, ref, request),
+                        icon: const Icon(Icons.repeat, size: 16),
+                        label: const Text('Send Again'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
                         ),
+                      ),
                     ],
                   ),
                 ],
@@ -861,11 +885,26 @@ class _RequestView extends ConsumerWidget {
         Navigator.of(context).pop();
       }
 
-      // Show error
+      // Show user-friendly error
       if (context.mounted) {
+        final errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+        final suggestion = ErrorHandler.getRecoverySuggestion(e);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error checking for responses: $e'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(errorMessage),
+                if (suggestion != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    suggestion,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),
@@ -1061,11 +1100,12 @@ class _RequestView extends ConsumerWidget {
         Navigator.of(context).pop();
       }
 
-      // Show error
+      // Show user-friendly error
       if (context.mounted) {
+        final errorMessage = ErrorHandler.getUserFriendlyMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error creating iteration: $e'),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 5),
           ),
