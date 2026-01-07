@@ -30,11 +30,11 @@ extension AppDatabaseDao on AppDatabase {
       query = query..where((c) => c.archived.equals(false));
     }
     query = query..orderBy([(c) => OrderingTerm.desc(c.updatedAt)]);
-    
+
     if (limit != null) {
       query = query..limit(limit, offset: offset ?? 0);
     }
-    
+
     final rows = await query.get();
     return rows
         .map(
@@ -363,11 +363,12 @@ extension AppDatabaseDao on AppDatabase {
     if (requestIds.isEmpty) {
       return [];
     }
-    
+
     // Use IN clause for batch query
-    final rows = await (select(recipientStatusTable)
+    final rows =
+        await (select(recipientStatusTable)
           ..where((r) => r.requestId.isIn(requestIds))).get();
-    
+
     return rows
         .map(
           (row) => models.RecipientStatus(
@@ -411,14 +412,15 @@ extension AppDatabaseDao on AppDatabase {
     String requestId, {
     int? limit,
   }) async {
-    var query = select(activityLog)
-      ..where((a) => a.requestId.equals(requestId))
-      ..orderBy([(a) => OrderingTerm.desc(a.timestamp)]);
-    
+    var query =
+        select(activityLog)
+          ..where((a) => a.requestId.equals(requestId))
+          ..orderBy([(a) => OrderingTerm.desc(a.timestamp)]);
+
     if (limit != null) {
       query = query..limit(limit);
     }
-    
+
     final rows = await query.get();
 
     return rows

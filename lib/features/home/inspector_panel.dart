@@ -50,20 +50,22 @@ final conversationParticipantsProvider = FutureProvider.family<
   }
 
   // Get recipient statuses only for explicitly added recipients
+  // Optimize: Use batch query to avoid N+1 queries
   final Map<String, models.RecipientStatus> uniqueStatuses = {};
-  for (final request in requests) {
-    final statuses = await db.getRecipientStatuses(request.requestId);
-    for (final status in statuses) {
-      // Only include statuses for emails that were explicitly added as recipients
-      if (explicitRecipients.contains(status.email)) {
-        if (!uniqueStatuses.containsKey(status.email) ||
-            (status.lastResponseAt != null &&
-                (uniqueStatuses[status.email]!.lastResponseAt == null ||
-                    status.lastResponseAt!.isAfter(
-                      uniqueStatuses[status.email]!.lastResponseAt!,
-                    )))) {
-          uniqueStatuses[status.email] = status;
-        }
+  final requestIds = requests.map((r) => r.requestId).toList();
+
+  // Batch query all recipient statuses for all requests in one query
+  final allStatuses = await db.getRecipientStatusesBatch(requestIds);
+  for (final status in allStatuses) {
+    // Only include statuses for emails that were explicitly added as recipients
+    if (explicitRecipients.contains(status.email)) {
+      if (!uniqueStatuses.containsKey(status.email) ||
+          (status.lastResponseAt != null &&
+              (uniqueStatuses[status.email]!.lastResponseAt == null ||
+                  status.lastResponseAt!.isAfter(
+                    uniqueStatuses[status.email]!.lastResponseAt!,
+                  )))) {
+        uniqueStatuses[status.email] = status;
       }
     }
   }
@@ -897,10 +899,7 @@ class _OverviewTabHelper {
         Navigator.of(context).pop();
         final errorMessage = ErrorHandler.getUserFriendlyMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
         );
       }
     }
@@ -1042,10 +1041,7 @@ class _OverviewTabHelper {
         Navigator.of(context).pop();
         final errorMessage = ErrorHandler.getUserFriendlyMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
         );
       }
     }
@@ -1443,7 +1439,12 @@ Future<void> _handleAddParticipant(
     if (context.mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ).showSnackBar(
+        SnackBar(
+          content: Text(ErrorHandler.getUserFriendlyMessage(e)),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }
@@ -1508,7 +1509,12 @@ Future<void> _removeParticipant(
     if (context.mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      ).showSnackBar(
+        SnackBar(
+          content: Text(ErrorHandler.getUserFriendlyMessage(e)),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }

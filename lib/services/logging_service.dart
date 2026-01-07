@@ -23,7 +23,7 @@ class LoggingService {
     try {
       final id = generateId();
       final payloadJson = jsonEncode(payload);
-      
+
       final entry = models.ActivityLogEntry(
         id: id,
         requestId: requestId,
@@ -31,7 +31,7 @@ class LoggingService {
         type: type,
         payloadJson: payloadJson,
       );
-      
+
       await _db.insertActivityLog(entry);
     } catch (e) {
       // Log error but don't throw - logging failures shouldn't break the app

@@ -8,6 +8,7 @@ import 'package:decision_agent/features/home/conversation_page.dart';
 import 'package:decision_agent/features/home/inspector_panel.dart';
 import 'package:decision_agent/domain/email_protocol.dart';
 import 'package:decision_agent/domain/models.dart' as models;
+import 'package:decision_agent/utils/error_handling.dart';
 
 class SendSection extends ConsumerStatefulWidget {
   const SendSection({super.key});
@@ -342,7 +343,9 @@ class _SendSectionState extends ConsumerState<SendSection> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text(
-                                  state.error ?? 'Failed to send request',
+                                  state.error != null
+                                      ? ErrorHandler.getUserFriendlyMessage(state.error!)
+                                      : 'Failed to send request',
                                 ),
                                 backgroundColor: Colors.red,
                               ),

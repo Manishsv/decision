@@ -13,17 +13,21 @@ import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
 
 /// Provider for chat messages by conversation - loads from database
-final chatMessagesProvider = FutureProvider.family<List<AIMessage>, String?>((ref, conversationId) async {
+final chatMessagesProvider = FutureProvider.family<List<AIMessage>, String?>((
+  ref,
+  conversationId,
+) async {
   if (conversationId == null) return [];
-  
+
   final db = ref.read(appDatabaseProvider);
   final dbMessages = await db.getAIChatMessages(conversationId);
-  
-  return dbMessages.map((m) => AIMessage(
-    role: m.role,
-    content: m.content,
-    timestamp: m.timestamp,
-  )).toList();
+
+  return dbMessages
+      .map(
+        (m) =>
+            AIMessage(role: m.role, content: m.content, timestamp: m.timestamp),
+      )
+      .toList();
 });
 
 class AIChatPanel extends ConsumerStatefulWidget {
@@ -81,23 +85,24 @@ class _AIChatPanelState extends ConsumerState<AIChatPanel> {
 
   Future<void> _sendAutoIntroduction() async {
     if (!mounted) return;
-    
+
     final selectedId = ref.read(selectedConversationIdProvider);
     if (selectedId == null) return;
 
     if (!mounted) return;
     final db = ref.read(appDatabaseProvider);
-    
+
     if (!mounted) return;
     final conversations = await db.getConversations(includeArchived: true);
-    
+
     if (!mounted) return;
     final conversation = conversations.firstWhere(
       (c) => c.id == selectedId,
       orElse: () => throw Exception('Conversation not found'),
     );
 
-    final introductionMessage = '''Hello! I'm your AI assistant for DIGIT Decision. I'm here to help you manage structured data requests via email.
+    final introductionMessage =
+        '''Hello! I'm your AI assistant for DIGIT Decision. I'm here to help you manage structured data requests via email.
 
 Here's what I can help you with:
 
@@ -127,7 +132,7 @@ For example, you can say:
 What would you like to start with?''';
 
     if (!mounted) return;
-    
+
     // Save introduction message
     final introId = generateId();
     await db.saveAIChatMessage(
@@ -139,7 +144,7 @@ What would you like to start with?''';
     );
 
     if (!mounted) return;
-    
+
     // Update local cache
     setState(() {
       _localMessages = [
@@ -152,7 +157,7 @@ What would you like to start with?''';
     });
 
     if (!mounted) return;
-    
+
     // Invalidate provider
     ref.invalidate(chatMessagesProvider(selectedId));
 
@@ -196,7 +201,7 @@ What would you like to start with?''';
       content: query,
       timestamp: DateTime.now(),
     );
-    
+
     // Save user message to database
     await db.saveAIChatMessage(
       messageId: userMessageId,
@@ -205,24 +210,24 @@ What would you like to start with?''';
       content: query,
       timestamp: userMessage.timestamp,
     );
-    
+
     // Update local cache for immediate UI update
     setState(() {
       _localMessages = [..._localMessages, userMessage];
     });
-    
+
     _messageController.clear();
     setState(() {
       _isLoading = true;
     });
-    
+
     // Scroll to bottom
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
     try {
       // Get AI Agent service
       final aiAgent = ref.read(aiAgentServiceProvider);
-      
+
       // Process query with current message history
       final response = await aiAgent.processQuery(
         query,
@@ -236,7 +241,7 @@ What would you like to start with?''';
         content: response.message,
         timestamp: DateTime.now(),
       );
-      
+
       // Save assistant message to database
       await db.saveAIChatMessage(
         messageId: assistantMessageId,
@@ -245,21 +250,21 @@ What would you like to start with?''';
         content: response.message,
         timestamp: assistantMessage.timestamp,
       );
-      
+
       // Update local cache
       setState(() {
         _localMessages = [..._localMessages, assistantMessage];
       });
-      
+
       // Invalidate provider to refresh if needed
       ref.invalidate(chatMessagesProvider(selectedId));
-      
+
       // Invalidate conversation requests provider (schema might have been defined)
       ref.invalidate(conversationRequestsProvider(selectedId));
-      
+
       // Invalidate conversations provider (sheet might have been created)
       ref.invalidate(conversationsProvider);
-      
+
       // Scroll to bottom
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     } catch (e) {
@@ -271,7 +276,7 @@ What would you like to start with?''';
         content: userFriendlyError,
         timestamp: DateTime.now(),
       );
-      
+
       // Save error message to database
       await db.saveAIChatMessage(
         messageId: errorMessageId,
@@ -280,15 +285,15 @@ What would you like to start with?''';
         content: 'Error: $e',
         timestamp: errorMessage.timestamp,
       );
-      
+
       // Update local cache
       setState(() {
         _localMessages = [..._localMessages, errorMessage];
       });
-      
+
       // Invalidate provider
       ref.invalidate(chatMessagesProvider(selectedId));
-      
+
       // Scroll to bottom
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     } finally {
@@ -301,21 +306,23 @@ What would you like to start with?''';
   @override
   Widget build(BuildContext context) {
     final selectedId = ref.watch(selectedConversationIdProvider);
-    
+
     // Watch for conversation changes and reload messages
     ref.listen(selectedConversationIdProvider, (previous, next) {
       if (previous != next) {
         _loadMessages();
       }
     });
-    
+
     // Use local messages for immediate UI, but also watch provider for updates
     final messagesAsync = ref.watch(chatMessagesProvider(selectedId));
-    
+
     // Update local messages when provider updates (e.g., on initial load)
     messagesAsync.whenData((messages) {
-      if (messages.length != _localMessages.length || 
-          (messages.isNotEmpty && messages.last.timestamp != _localMessages.lastOrNull?.timestamp)) {
+      if (messages.length != _localMessages.length ||
+          (messages.isNotEmpty &&
+              messages.last.timestamp !=
+                  _localMessages.lastOrNull?.timestamp)) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             setState(() {
@@ -325,7 +332,7 @@ What would you like to start with?''';
         });
       }
     });
-    
+
     final messages = _localMessages;
 
     if (selectedId == null) {
@@ -369,9 +376,7 @@ What would you like to start with?''';
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: Colors.grey[300]!),
-            ),
+            border: Border(bottom: BorderSide(color: Colors.grey[300]!)),
           ),
           child: Row(
             children: [
@@ -379,10 +384,7 @@ What would you like to start with?''';
               const SizedBox(width: 8),
               const Text(
                 'AI Agent',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const Spacer(),
               if (messages.isEmpty)
@@ -391,35 +393,42 @@ What would you like to start with?''';
                     // Show example queries
                     showDialog(
                       context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('Example Queries'),
-                        content: const SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text('Questions:'),
-                              Text('• How many participants have responded?'),
-                              Text('• Who is pending?'),
-                              Text('• How many requests are in this conversation?'),
-                              SizedBox(height: 16),
-                              Text('Actions:'),
-                              Text('• Send reminders to pending participants'),
-                              Text('• Create a new request'),
-                              SizedBox(height: 16),
-                              Text('Analysis:'),
-                              Text('• What does the data tell us?'),
-                              Text('• Analyze the responses'),
+                      builder:
+                          (context) => AlertDialog(
+                            title: const Text('Example Queries'),
+                            content: const SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text('Questions:'),
+                                  Text(
+                                    '• How many participants have responded?',
+                                  ),
+                                  Text('• Who is pending?'),
+                                  Text(
+                                    '• How many requests are in this conversation?',
+                                  ),
+                                  SizedBox(height: 16),
+                                  Text('Actions:'),
+                                  Text(
+                                    '• Send reminders to pending participants',
+                                  ),
+                                  Text('• Create a new request'),
+                                  SizedBox(height: 16),
+                                  Text('Analysis:'),
+                                  Text('• What does the data tell us?'),
+                                  Text('• Analyze the responses'),
+                                ],
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: Text('OK'),
+                              ),
                             ],
                           ),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: Text('OK'),
-                          ),
-                        ],
-                      ),
                     );
                   },
                   icon: const Icon(Icons.help_outline, size: 16),
@@ -430,42 +439,51 @@ What would you like to start with?''';
         ),
         // Messages
         Expanded(
-          child: messages.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.chat_bubble_outline, size: 48, color: Colors.grey[400]),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Start a conversation with the AI Agent',
-                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Ask questions or give instructions',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-                      ),
-                    ],
+          child:
+              messages.isEmpty
+                  ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 48,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Start a conversation with the AI Agent',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Ask questions or give instructions',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                  : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messages[index];
+                      return _ChatBubble(message: message);
+                    },
                   ),
-                )
-              : ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final message = messages[index];
-                    return _ChatBubble(message: message);
-                  },
-                ),
         ),
         // Input area
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(color: Colors.grey[300]!),
-            ),
+            border: Border(top: BorderSide(color: Colors.grey[300]!)),
             color: Theme.of(context).scaffoldBackgroundColor,
           ),
           child: Row(
@@ -492,13 +510,14 @@ What would you like to start with?''';
               const SizedBox(width: 8),
               IconButton(
                 onPressed: _isLoading ? null : _sendMessage,
-                icon: _isLoading
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.send),
+                icon:
+                    _isLoading
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Icon(Icons.send),
                 tooltip: 'Send',
               ),
             ],
@@ -517,7 +536,7 @@ class _ChatBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUser = message.role == 'user';
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -537,9 +556,7 @@ class _ChatBubble extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: isUser
-                    ? Colors.blue
-                    : Colors.grey[200],
+                color: isUser ? Colors.blue : Colors.grey[200],
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
@@ -549,10 +566,7 @@ class _ChatBubble extends StatelessWidget {
                   if (isUser)
                     Text(
                       message.content,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                      ),
+                      style: const TextStyle(color: Colors.white, fontSize: 14),
                     )
                   else
                     MarkdownBody(
@@ -563,7 +577,10 @@ class _ChatBubble extends StatelessWidget {
                           final uri = Uri.tryParse(href);
                           if (uri != null) {
                             if (await canLaunchUrl(uri)) {
-                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                              await launchUrl(
+                                uri,
+                                mode: LaunchMode.externalApplication,
+                              );
                             } else {
                               // Fallback to native command
                               try {
@@ -572,7 +589,9 @@ class _ChatBubble extends StatelessWidget {
                                 } else if (Platform.isLinux) {
                                   await Process.run('xdg-open', [href]);
                                 } else if (Platform.isWindows) {
-                                  await Process.run('start', [href], runInShell: true);
+                                  await Process.run('start', [
+                                    href,
+                                  ], runInShell: true);
                                 }
                               } catch (e) {
                                 if (context.mounted) {
@@ -627,9 +646,7 @@ class _ChatBubble extends StatelessWidget {
                           color: Colors.grey[100],
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        listBullet: const TextStyle(
-                          color: Colors.black87,
-                        ),
+                        listBullet: const TextStyle(color: Colors.black87),
                         blockquote: TextStyle(
                           color: Colors.grey[700],
                           fontStyle: FontStyle.italic,
@@ -642,9 +659,7 @@ class _ChatBubble extends StatelessWidget {
                   Text(
                     _formatTime(message.timestamp),
                     style: TextStyle(
-                      color: isUser
-                          ? Colors.white70
-                          : Colors.grey[600],
+                      color: isUser ? Colors.white70 : Colors.grey[600],
                       fontSize: 11,
                     ),
                   ),

@@ -27,56 +27,59 @@ class ProfileMenuButton extends ConsumerWidget {
           offset: const Offset(0, 48),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
-            child: _buildProfileAvatar(profile.pictureUrl, profile.name ?? profile.email),
+            child: _buildProfileAvatar(
+              profile.pictureUrl,
+              profile.name ?? profile.email,
+            ),
           ),
           onSelected: (value) => _handleMenuSelection(context, ref, value),
-          itemBuilder: (context) => [
-            PopupMenuItem<String>(
-              value: 'profile',
-              child: Row(
-                children: [
-                  const Icon(Icons.person, size: 20),
-                  const SizedBox(width: 12),
-                  const Text('Profile'),
-                ],
-              ),
-            ),
-            PopupMenuItem<String>(
-              value: 'settings',
-              child: Row(
-                children: [
-                  const Icon(Icons.settings, size: 20),
-                  const SizedBox(width: 12),
-                  const Text('Settings'),
-                ],
-              ),
-            ),
-            const PopupMenuDivider(),
-            PopupMenuItem<String>(
-              value: 'logout',
-              child: Row(
-                children: [
-                  const Icon(Icons.logout, size: 20, color: Colors.red),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Logout',
-                    style: TextStyle(color: Colors.red),
+          itemBuilder:
+              (context) => [
+                PopupMenuItem<String>(
+                  value: 'profile',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.person, size: 20),
+                      const SizedBox(width: 12),
+                      const Text('Profile'),
+                    ],
                   ),
-                ],
-              ),
-            ),
-          ],
+                ),
+                PopupMenuItem<String>(
+                  value: 'settings',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.settings, size: 20),
+                      const SizedBox(width: 12),
+                      const Text('Settings'),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem<String>(
+                  value: 'logout',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.logout, size: 20, color: Colors.red),
+                      const SizedBox(width: 12),
+                      const Text('Logout', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
         );
       },
-      loading: () => const SizedBox(
-        width: 40,
-        height: 40,
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      ),
-      error: (error, stack) => IconButton(
-        icon: const Icon(Icons.account_circle),
-        onPressed: () => _showMenu(context, ref, null),
-      ),
+      loading:
+          () => const SizedBox(
+            width: 40,
+            height: 40,
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          ),
+      error:
+          (error, stack) => IconButton(
+            icon: const Icon(Icons.account_circle),
+            onPressed: () => _showMenu(context, ref, null),
+          ),
     );
   }
 
@@ -152,21 +155,22 @@ class ProfileMenuButton extends ConsumerWidget {
     // Show confirmation dialog
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Text('Logout'),
+            content: const Text('Are you sure you want to logout?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Logout'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
     );
 
     if (confirmed != true) return;
@@ -186,10 +190,7 @@ class ProfileMenuButton extends ConsumerWidget {
       if (context.mounted) {
         final errorMessage = ErrorHandler.getUserFriendlyMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
         );
       }
     }

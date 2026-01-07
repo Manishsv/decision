@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:decision_agent/features/onboarding/onboarding_controller.dart';
+import 'package:decision_agent/utils/error_handling.dart';
 
 class OnboardingPage extends ConsumerStatefulWidget {
   const OnboardingPage({super.key});
@@ -121,9 +122,25 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.red[200]!),
                   ),
-                  child: Text(
-                    'Error: ${state.error}',
-                    style: TextStyle(color: Colors.red[800]),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        ErrorHandler.getUserFriendlyMessage(state.error!),
+                        style: TextStyle(color: Colors.red[800]),
+                      ),
+                      if (ErrorHandler.getRecoverySuggestion(state.error!) != null) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          ErrorHandler.getRecoverySuggestion(state.error!)!,
+                          style: TextStyle(
+                            color: Colors.red[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
             ],

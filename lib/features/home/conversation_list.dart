@@ -12,6 +12,7 @@ import 'package:decision_agent/services/request_service.dart';
 import 'package:decision_agent/data/google/sheets_service.dart';
 import 'package:decision_agent/data/google/gmail_service.dart';
 import 'package:decision_agent/services/logging_service.dart';
+import 'package:decision_agent/utils/error_handling.dart';
 
 class ConversationList extends ConsumerWidget {
   const ConversationList({super.key});
@@ -98,7 +99,7 @@ class ConversationList extends ConsumerWidget {
                       ref.read(selectedConversationIdProvider.notifier).state = conversation.id;
                     },
                     onArchive: () async {
-                      await _archiveConversation(ref, conversation.id);
+                      await _archiveConversation(context, ref, conversation.id);
                     },
                     onDelete: () async {
                       await _deleteConversation(context, ref, conversation);
@@ -155,8 +156,15 @@ class ConversationList extends ConsumerWidget {
         ref.read(selectedConversationIdProvider.notifier).state = null;
       }
     } catch (e) {
-      // Error handling - could show a snackbar here
-      debugPrint('Error archiving conversation: $e');
+      if (context.mounted) {
+        final errorMessage = ErrorHandler.getUserFriendlyMessage(e);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

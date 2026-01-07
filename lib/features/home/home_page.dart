@@ -38,9 +38,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
-        ),
+        builder: (context) => const Center(child: CircularProgressIndicator()),
       );
 
       // Get services
@@ -84,10 +82,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       if (context.mounted) {
         final errorMessage = ErrorHandler.getUserFriendlyMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
         );
       }
     }
@@ -98,8 +93,10 @@ class _HomePageState extends ConsumerState<HomePage> {
     return Shortcuts(
       shortcuts: {
         // Command+N on macOS, Ctrl+N on Windows/Linux
-        const SingleActivator(LogicalKeyboardKey.keyN, meta: true): _NewConversationIntent(),
-        const SingleActivator(LogicalKeyboardKey.keyN, control: true): _NewConversationIntent(),
+        const SingleActivator(LogicalKeyboardKey.keyN, meta: true):
+            _NewConversationIntent(),
+        const SingleActivator(LogicalKeyboardKey.keyN, control: true):
+            _NewConversationIntent(),
       },
       child: Actions(
         actions: {
@@ -113,42 +110,36 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: Focus(
           autofocus: true,
           child: Scaffold(
-          appBar: AppBar(
-            title: const Text('DIGIT Decision'),
-            actions: [
-              const ProfileMenuButton(),
-              const SizedBox(width: 8),
-            ],
-          ),
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => _createNewConversation(context),
-            icon: const Icon(Icons.add),
-            label: const Text('New Conversation'),
-          ),
-          body: Row(
-        children: [
-          // Left pane: Conversation list
-          const SizedBox(
-            width: 280,
-            child: ConversationList(),
-          ),
-          // Divider
-          const VerticalDivider(width: 1),
-          // Center pane: Conversation/Request view
-          const Expanded(
-            child: ConversationPage(),
-          ),
-          // Divider (only show if inspector is visible)
-          Consumer(
-            builder: (context, ref, child) {
-              final isVisible = ref.watch(inspectorPanelVisibleProvider);
-              return isVisible ? const VerticalDivider(width: 1) : const SizedBox.shrink();
-            },
-          ),
-          // Right pane: Inspector (collapsible)
-          const InspectorPanel(),
-        ],
-      ),
+            appBar: AppBar(
+              title: const Text('DIGIT Decision'),
+              actions: [const ProfileMenuButton(), const SizedBox(width: 8)],
+            ),
+            floatingActionButton: FloatingActionButton.extended(
+              onPressed: () => _createNewConversation(context),
+              icon: const Icon(Icons.add),
+              label: const Text('New Conversation'),
+            ),
+            body: Row(
+              children: [
+                // Left pane: Conversation list
+                const SizedBox(width: 280, child: ConversationList()),
+                // Divider
+                const VerticalDivider(width: 1),
+                // Center pane: Conversation/Request view
+                const Expanded(child: ConversationPage()),
+                // Divider (only show if inspector is visible)
+                Consumer(
+                  builder: (context, ref, child) {
+                    final isVisible = ref.watch(inspectorPanelVisibleProvider);
+                    return isVisible
+                        ? const VerticalDivider(width: 1)
+                        : const SizedBox.shrink();
+                  },
+                ),
+                // Right pane: Inspector (collapsible)
+                const InspectorPanel(),
+              ],
+            ),
           ),
         ),
       ),
