@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:decision_agent/features/settings/settings_controller.dart';
 import 'package:decision_agent/utils/error_handling.dart';
+import 'package:decision_agent/utils/validation.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -43,6 +44,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Future<void> _saveOpenAiKey() async {
     final controller = ref.read(settingsControllerProvider.notifier);
     final state = ref.watch(settingsControllerProvider);
+    
+    // Validate OpenAI key format if provided
+    final keyValidation = validateOpenAiKey(_openAiKeyController.text);
+    if (!keyValidation.isValid) {
+      if (mounted && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(keyValidation.errorMessage!),
+            backgroundColor: Colors.orange,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+      return;
+    }
     
     await controller.saveOpenAiKey(_openAiKeyController.text);
     

@@ -23,6 +23,7 @@ import 'package:decision_agent/domain/models.dart' as models;
 import 'package:decision_agent/domain/request_schema.dart';
 import 'package:decision_agent/features/home/conversation_page.dart';
 import 'package:decision_agent/utils/error_handling.dart';
+import 'package:decision_agent/utils/validation.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
@@ -98,38 +99,36 @@ final conversationParticipantsProvider = FutureProvider.family<
 
 /// Provider for all activity logs across all requests in a conversation
 /// Limits to most recent 200 logs total for performance
-final conversationActivityLogsProvider =
-    FutureProvider.family<List<models.ActivityLogEntry>, String>((
-      ref,
-      conversationId,
-    ) async {
-      final db = ref.read(appDatabaseProvider);
-      final loggingService = LoggingService(db);
+final conversationActivityLogsProvider = FutureProvider.family<
+  List<models.ActivityLogEntry>,
+  String
+>((ref, conversationId) async {
+  final db = ref.read(appDatabaseProvider);
+  final loggingService = LoggingService(db);
 
-      // Get all requests for this conversation
-      final requests = await db.getRequestsByConversation(conversationId);
+  // Get all requests for this conversation
+  final requests = await db.getRequestsByConversation(conversationId);
 
-      // Get activity logs for all requests (limit per request to prevent too many)
-      // Use a smaller limit per request so total doesn't exceed ~200 logs
-      final limitPerRequest = requests.isEmpty
-          ? 50
-          : (200 / requests.length).ceil().clamp(10, 100);
+  // Get activity logs for all requests (limit per request to prevent too many)
+  // Use a smaller limit per request so total doesn't exceed ~200 logs
+  final limitPerRequest =
+      requests.isEmpty ? 50 : (200 / requests.length).ceil().clamp(10, 100);
 
-      final allLogs = <models.ActivityLogEntry>[];
-      for (final request in requests) {
-        final logs = await loggingService.getActivityLogs(
-          request.requestId,
-          limit: limitPerRequest,
-        );
-        allLogs.addAll(logs);
-      }
+  final allLogs = <models.ActivityLogEntry>[];
+  for (final request in requests) {
+    final logs = await loggingService.getActivityLogs(
+      request.requestId,
+      limit: limitPerRequest,
+    );
+    allLogs.addAll(logs);
+  }
 
-      // Sort by timestamp (most recent first)
-      allLogs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+  // Sort by timestamp (most recent first)
+  allLogs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-      // Limit total to 200 most recent
-      return allLogs.take(200).toList();
-    });
+  // Limit total to 200 most recent
+  return allLogs.take(200).toList();
+});
 
 class InspectorPanel extends ConsumerStatefulWidget {
   const InspectorPanel({super.key});
@@ -1403,17 +1402,14 @@ Future<void> _handleAddParticipant(
   String conversationId,
   String email,
 ) async {
-  if (email.trim().isEmpty) {
+  // Validate email address
+  final emailValidation = validateEmail(email);
+  if (!emailValidation.isValid) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Please enter an email address')),
-    );
-    return;
-  }
-
-  // Basic email validation
-  if (!email.contains('@') || !email.contains('.')) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Please enter a valid email address')),
+      SnackBar(
+        content: Text(emailValidation.errorMessage!),
+        backgroundColor: Colors.red,
+      ),
     );
     return;
   }

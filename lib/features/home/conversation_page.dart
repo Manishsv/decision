@@ -81,24 +81,24 @@ class ConversationPage extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error:
             (error, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                   Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
-            const SizedBox(height: 16),
-            Text(
+                  const SizedBox(height: 16),
+                  Text(
                     'Error loading conversations',
                     style: TextStyle(color: Colors.red[600], fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            Text(
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
                     error.toString(),
                     style: TextStyle(color: Colors.grey[600], fontSize: 12),
-              textAlign: TextAlign.center,
-            ),
-          ],
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
-        ),
+            ),
       );
     }
 
@@ -493,27 +493,29 @@ class ConversationPage extends ConsumerWidget {
             );
           },
           loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stack) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Text(
-                      ErrorHandler.getUserFriendlyMessage(error),
-                      textAlign: TextAlign.center,
-                    ),
+          error:
+              (error, stack) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Text(
+                    ErrorHandler.getUserFriendlyMessage(error),
+                    textAlign: TextAlign.center,
                   ),
                 ),
+              ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stack) => Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Text(
-                      ErrorHandler.getUserFriendlyMessage(error),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
+      error:
+          (error, stack) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Text(
+                ErrorHandler.getUserFriendlyMessage(error),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
     );
   }
 
@@ -668,16 +670,16 @@ class _RequestView extends ConsumerWidget {
                         label: const Text('Check for responses'),
                       ),
                       // Show "Send Again" button if there are requests
-                        ElevatedButton.icon(
-                          onPressed:
-                              () => _showSendAgainDialog(context, ref, request),
-                          icon: const Icon(Icons.repeat, size: 16),
-                          label: const Text('Send Again'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue,
-                            foregroundColor: Colors.white,
-                          ),
+                      ElevatedButton.icon(
+                        onPressed:
+                            () => _showSendAgainDialog(context, ref, request),
+                        icon: const Icon(Icons.repeat, size: 16),
+                        label: const Text('Send Again'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue,
+                          foregroundColor: Colors.white,
                         ),
+                      ),
                     ],
                   ),
                 ],

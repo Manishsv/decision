@@ -9,6 +9,7 @@ import 'package:decision_agent/features/home/inspector_panel.dart';
 import 'package:decision_agent/domain/email_protocol.dart';
 import 'package:decision_agent/domain/models.dart' as models;
 import 'package:decision_agent/utils/error_handling.dart';
+import 'package:decision_agent/utils/validation.dart';
 
 class SendSection extends ConsumerStatefulWidget {
   const SendSection({super.key});
@@ -434,12 +435,12 @@ class _SendSectionState extends ConsumerState<SendSection> {
   void _addNewEmail(String email) {
     if (email.isEmpty) return;
     
-    // Basic email validation
-    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+');
-    if (!emailRegex.hasMatch(email)) {
+    // Validate email address
+    final emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid email address'),
+        SnackBar(
+          content: Text(emailValidation.errorMessage!),
           backgroundColor: Colors.red,
         ),
       );
