@@ -27,9 +27,13 @@
   - Inspector Panel
   - Home Page
   - Profile Menu
+  - Onboarding Page
+  - Conversation List
+  - Request Builder (Send Section)
 - [x] Added user-friendly error messages
 - [x] Added recovery suggestions for recoverable errors
 - [x] Improved error UI with icons and helpful text
+- [x] Fixed database table name issues in index creation (recipient_status_table, a_i_chat_messages)
 
 ### Database Performance
 - [x] Added database indexes for:
@@ -48,11 +52,11 @@
 ## 🔄 In Progress / Remaining
 
 ### Error Handling (Partial)
-- [ ] Integrate ErrorHandler in remaining error locations:
-  - Request builder pages
-  - Settings page
-  - Onboarding page
-  - Conversation list
+- [x] Integrate ErrorHandler in remaining error locations:
+  - ✅ Request builder pages (Send Section)
+  - ✅ Onboarding page
+  - ✅ Conversation list
+- [ ] Integrate ErrorHandler in Settings page
 - [ ] Add input validation with user-friendly messages
 
 ### Performance (Partial)
