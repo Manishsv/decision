@@ -58,7 +58,10 @@
   - ✅ Onboarding page
   - ✅ Conversation list
   - ✅ Settings page
-- [ ] Add input validation with user-friendly messages
+- [x] Add input validation with user-friendly messages
+  - ✅ Created centralized validation utility (lib/utils/validation.dart)
+  - ✅ Improved email validation in inspector panel and send section
+  - ✅ Added OpenAI API key format validation
 
 ### Performance (Partial)
 - [x] Optimize conversationActivityLogsProvider (limits to 200 most recent logs)
