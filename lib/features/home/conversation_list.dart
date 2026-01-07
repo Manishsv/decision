@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:decision_agent/features/home/conversation_page.dart';
 import 'package:decision_agent/domain/models.dart' as models;
 import 'package:decision_agent/app/db_provider.dart';
