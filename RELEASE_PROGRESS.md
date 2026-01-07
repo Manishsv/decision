@@ -51,17 +51,17 @@
 
 ## 🔄 In Progress / Remaining
 
-### Error Handling (Partial)
+### Error Handling (Complete)
 - [x] Integrate ErrorHandler in remaining error locations:
   - ✅ Request builder pages (Send Section)
   - ✅ Onboarding page
   - ✅ Conversation list
-- [ ] Integrate ErrorHandler in Settings page
+  - ✅ Settings page
 - [ ] Add input validation with user-friendly messages
 
 ### Performance (Partial)
+- [x] Optimize conversationActivityLogsProvider (limits to 200 most recent logs)
 - [ ] Add pagination UI for large lists (conversations, activity logs)
-- [ ] Optimize conversationActivityLogsProvider (currently loads all logs)
 - [ ] Add query limits to other large result sets
 - [ ] Review and optimize widget rebuilds
 
