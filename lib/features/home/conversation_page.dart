@@ -13,6 +13,7 @@ import 'package:decision_agent/services/ingestion_service.dart';
 import 'package:decision_agent/services/request_service.dart';
 import 'package:decision_agent/domain/models.dart' as models;
 import 'package:decision_agent/features/home/ai_chat_panel.dart';
+import 'package:decision_agent/features/home/conversation_list.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -63,45 +64,44 @@ class ConversationPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedId = ref.watch(selectedConversationIdProvider);
+    final conversationsAsync = ref.watch(conversationsProvider);
 
     if (selectedId == null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text(
-              'AI Agent',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[700],
+      return conversationsAsync.when(
+        data: (conversations) {
+          if (conversations.isEmpty) {
+            // No conversations - show onboarding
+            return _buildOnboardingView(context, ref);
+          } else {
+            // Has conversations but none selected - show guidance
+            return _buildSelectConversationView(context);
+          }
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error:
+            (error, stack) => Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading conversations',
+                    style: TextStyle(color: Colors.red[600], fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    error.toString(),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Select a conversation to interact with the AI Agent',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Coming soon: Ask questions, get insights, and execute actions',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[400],
-                fontStyle: FontStyle.italic,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
       );
     }
 
-    // Get conversation details
-    final conversationsAsync = ref.watch(conversationsProvider);
-
+    // Reuse the conversationsAsync already loaded above
     return conversationsAsync.when(
       data: (conversations) {
         try {
@@ -119,6 +119,321 @@ class ConversationPage extends ConsumerWidget {
       error:
           (error, stack) =>
               Center(child: Text('Error loading conversation: $error')),
+    );
+  }
+
+  Widget _buildOnboardingView(BuildContext context, WidgetRef ref) {
+    return SingleChildScrollView(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(48.0),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Main icon
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.smart_toy,
+                    size: 80,
+                    color: Colors.blue,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                // Title
+                Text(
+                  'Welcome to DIGIT Decision',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).textTheme.headlineMedium?.color,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                // Subtitle
+                Text(
+                  'Your AI-powered assistant for collecting structured data via email',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color:
+                        Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.color?.withOpacity(0.7) ??
+                        Colors.grey[700],
+                    height: 1.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 48),
+                // CTA Button
+                ElevatedButton.icon(
+                  onPressed: () async {
+                    try {
+                      await ConversationListHelper.createNewConversation(
+                        context,
+                        ref,
+                      );
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error creating conversation: $e'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.add_circle_outline),
+                  label: const Text(
+                    'Create Your First Conversation',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 64),
+                // Features section
+                Text(
+                  'What you can do:',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).textTheme.titleLarge?.color,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                _buildFeatureItem(
+                  Icons.table_chart,
+                  'Define Data Schema',
+                  'Create structured data requests with custom columns and fields',
+                ),
+                const SizedBox(height: 16),
+                _buildFeatureItem(
+                  Icons.email,
+                  'Send via Email',
+                  'Automatically send requests to participants via Gmail',
+                ),
+                const SizedBox(height: 16),
+                _buildFeatureItem(
+                  Icons.track_changes,
+                  'Track Responses',
+                  'Monitor who has responded and send reminders automatically',
+                ),
+                const SizedBox(height: 16),
+                _buildFeatureItem(
+                  Icons.analytics,
+                  'Analyze Data',
+                  'Get insights and analyze collected data with AI assistance',
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Ready to get started? Click the button above to create your first conversation!',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color:
+                        Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.color?.withOpacity(0.6) ??
+                        Colors.grey[600],
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectConversationView(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(48.0),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.chat_bubble_outline,
+                size: 80,
+                color:
+                    Theme.of(context).iconTheme.color?.withOpacity(0.5) ??
+                    Colors.grey[400],
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Select a Conversation',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).textTheme.titleLarge?.color,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Choose a conversation from the left sidebar to start interacting with the AI Agent',
+                style: TextStyle(
+                  fontSize: 16,
+                  color:
+                      Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.color?.withOpacity(0.7) ??
+                      Colors.grey[600],
+                  height: 1.5,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(
+                    Theme.of(context).brightness == Brightness.dark
+                        ? 0.15
+                        : 0.05,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.primary.withOpacity(
+                      Theme.of(context).brightness == Brightness.dark
+                          ? 0.3
+                          : 0.2,
+                    ),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.lightbulb_outline,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Quick Tips',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    _buildTipItem(
+                      context,
+                      '💬 Ask the AI to create a new data collection',
+                    ),
+                    _buildTipItem(
+                      context,
+                      '📊 Define what data you want to collect',
+                    ),
+                    _buildTipItem(
+                      context,
+                      '👥 Add participants and send requests',
+                    ),
+                    _buildTipItem(
+                      context,
+                      '📈 Track responses and analyze results',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureItem(IconData icon, String title, String description) {
+    return Builder(
+      builder:
+          (context) => Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).textTheme.titleMedium?.color,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color:
+                            Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.color?.withOpacity(0.7) ??
+                            Colors.grey[600],
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+    );
+  }
+
+  Widget _buildTipItem(BuildContext context, String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 14,
+          color:
+              Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.8) ??
+              Colors.grey[700],
+          height: 1.5,
+        ),
+      ),
     );
   }
 
@@ -312,10 +627,8 @@ class _RequestView extends ConsumerWidget {
                         icon: const Icon(Icons.refresh, size: 16),
                         label: const Text('Check for responses'),
                       ),
-                      // Show "Send Again" button (always show if there are requests)
-                      // Status check removed - conversations don't have status
-                      if (true) // TODO: Check if request was sent (check activity logs)
-                        ElevatedButton.icon(
+                      // Show "Send Again" button if there are requests
+                      ElevatedButton.icon(
                           onPressed:
                               () => _showSendAgainDialog(context, ref, request),
                           icon: const Icon(Icons.repeat, size: 16),

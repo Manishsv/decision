@@ -3,10 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:decision_agent/features/home/conversation_list.dart';
 import 'package:decision_agent/features/home/conversation_page.dart';
 import 'package:decision_agent/features/home/inspector_panel.dart';
+import 'package:decision_agent/features/profile/profile_menu_button.dart';
 import 'package:decision_agent/app/db_provider.dart';
 import 'package:decision_agent/app/auth_provider.dart';
 import 'package:decision_agent/services/request_service.dart';
@@ -114,10 +114,8 @@ class _HomePageState extends ConsumerState<HomePage> {
           appBar: AppBar(
             title: const Text('DIGIT Decision'),
             actions: [
-              IconButton(
-                icon: const Icon(Icons.settings),
-                onPressed: () => context.go('/settings'),
-              ),
+              const ProfileMenuButton(),
+              const SizedBox(width: 8),
             ],
           ),
           floatingActionButton: FloatingActionButton.extended(

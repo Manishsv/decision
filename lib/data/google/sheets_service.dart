@@ -278,14 +278,6 @@ class SheetsService {
     );
   }
 
-  /// Append rows to the Responses tab (legacy method - kept for compatibility)
-  /// [sheetId] - Google Sheet ID
-  /// [rows] - List of rows, where each row is a list of cell values
-  @Deprecated('Use updateOrInsertRows instead')
-  Future<void> appendRows(String sheetId, List<List<Object?>> rows) async {
-    await _appendRows(sheetId, rows);
-  }
-
   /// Get sheet URL from sheet ID
   String getSheetUrl(String sheetId) {
     return 'https://docs.google.com/spreadsheets/d/$sheetId';

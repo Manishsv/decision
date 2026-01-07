@@ -211,8 +211,12 @@ class _InspectorPanelState extends ConsumerState<InspectorPanel>
           // Tabs
           TabBar(
             controller: _tabController,
-            labelColor: Theme.of(context).primaryColor,
-            unselectedLabelColor: Colors.grey[600],
+            labelColor: Theme.of(context).colorScheme.onSurface,
+            unselectedLabelColor:
+                Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.color?.withOpacity(0.6) ??
+                Colors.grey[600],
             indicatorColor: Theme.of(context).primaryColor,
             labelStyle: const TextStyle(
               fontSize: 13,
@@ -385,9 +389,18 @@ class _OverviewTab extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.grey[50],
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.grey[800]
+                                    : Colors.grey[50],
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey[200]!),
+                            border: Border.all(
+                              color:
+                                  Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.grey[700]!
+                                      : Colors.grey[200]!,
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -397,7 +410,10 @@ class _OverviewTab extends ConsumerWidget {
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
-                                  color: Colors.grey[700],
+                                  color:
+                                      Theme.of(
+                                        context,
+                                      ).textTheme.titleMedium?.color,
                                   letterSpacing: 0.5,
                                 ),
                               ),
@@ -475,9 +491,18 @@ class _OverviewTab extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.grey[50],
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.grey[800]
+                                    : Colors.grey[50],
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.grey[200]!),
+                            border: Border.all(
+                              color:
+                                  Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? Colors.grey[700]!
+                                      : Colors.grey[200]!,
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,7 +511,16 @@ class _OverviewTab extends ConsumerWidget {
                                 'Created',
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: Colors.grey[600],
+                                  color:
+                                      Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? Theme.of(context)
+                                                  .textTheme
+                                                  .bodyMedium
+                                                  ?.color
+                                                  ?.withOpacity(0.7) ??
+                                              Colors.grey[400]
+                                          : Colors.grey[600],
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -494,7 +528,10 @@ class _OverviewTab extends ConsumerWidget {
                                 _formatDate(conversation.createdAt),
                                 style: TextStyle(
                                   fontSize: 12,
-                                  color: Colors.grey[800],
+                                  color:
+                                      Theme.of(
+                                        context,
+                                      ).textTheme.bodyMedium?.color,
                                 ),
                               ),
                             ],
@@ -572,7 +609,13 @@ class _StatCard extends StatelessWidget {
             label,
             style: TextStyle(
               fontSize: 11,
-              color: Colors.grey[700],
+              color:
+                  Theme.of(context).brightness == Brightness.dark
+                      ? Theme.of(
+                            context,
+                          ).textTheme.bodyMedium?.color?.withOpacity(0.8) ??
+                          Colors.grey[300]
+                      : Colors.grey[700],
               fontWeight: FontWeight.w500,
             ),
             maxLines: 1,
@@ -596,7 +639,14 @@ class _StatCard extends StatelessWidget {
               ),
               Text(
                 total,
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                style: TextStyle(
+                  fontSize: 12,
+                  color:
+                      Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.color?.withOpacity(0.6) ??
+                      Colors.grey[600],
+                ),
               ),
             ],
           ),
@@ -618,13 +668,28 @@ class _MetricRow extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color:
+                Theme.of(context).brightness == Brightness.dark
+                    ? Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.color?.withOpacity(0.8) ??
+                        Colors.grey[300]
+                    : Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.color?.withOpacity(0.7) ??
+                        Colors.grey[700],
+          ),
+        ),
         Text(
           value,
           style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            color: Colors.grey[900],
+            color: Theme.of(context).textTheme.bodyMedium?.color,
           ),
         ),
       ],
@@ -1111,7 +1176,14 @@ class _ParticipantsTab extends ConsumerWidget {
               padding: const EdgeInsets.all(24),
               child: Text(
                 'No participants yet',
-                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                style: TextStyle(
+                  color:
+                      Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.color?.withOpacity(0.6) ??
+                      Colors.grey[600],
+                  fontSize: 13,
+                ),
               ),
             ),
           );
@@ -1133,9 +1205,29 @@ class _ParticipantsTab extends ConsumerWidget {
 
         return Column(
           children: [
-            // Filter chips
+            // Add Participant button
             Padding(
               padding: const EdgeInsets.all(12),
+              child: SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed:
+                      () => _showAddParticipantDialog(
+                        context,
+                        ref,
+                        conversationId,
+                      ),
+                  icon: const Icon(Icons.person_add, size: 16),
+                  label: const Text('Add Participant'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                ),
+              ),
+            ),
+            // Filter chips
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Wrap(
                 spacing: 6,
                 runSpacing: 6,
@@ -1171,7 +1263,17 @@ class _ParticipantsTab extends ConsumerWidget {
                 itemCount: participants.length,
                 itemBuilder: (context, index) {
                   final participant = participants[index];
-                  return _ParticipantTile(participant: participant);
+                  return _ParticipantTile(
+                    participant: participant,
+                    conversationId: conversationId,
+                    onRemove:
+                        () => _removeParticipant(
+                          context,
+                          ref,
+                          conversationId,
+                          participant.email,
+                        ),
+                  );
                 },
               ),
             ),
@@ -1225,11 +1327,188 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
+// Helper functions for participant management
+void _showAddParticipantDialog(
+  BuildContext context,
+  WidgetRef ref,
+  String conversationId,
+) {
+  final emailController = TextEditingController();
+
+  showDialog(
+    context: context,
+    builder:
+        (dialogContext) => AlertDialog(
+          title: const Text('Add Participant'),
+          content: TextField(
+            controller: emailController,
+            decoration: const InputDecoration(
+              labelText: 'Email address',
+              hintText: 'participant@example.com',
+            ),
+            keyboardType: TextInputType.emailAddress,
+            autofocus: true,
+            onSubmitted:
+                (_) => _handleAddParticipant(
+                  dialogContext,
+                  ref,
+                  conversationId,
+                  emailController.text,
+                ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed:
+                  () => _handleAddParticipant(
+                    dialogContext,
+                    ref,
+                    conversationId,
+                    emailController.text,
+                  ),
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+  );
+}
+
+Future<void> _handleAddParticipant(
+  BuildContext context,
+  WidgetRef ref,
+  String conversationId,
+  String email,
+) async {
+  if (email.trim().isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please enter an email address')),
+    );
+    return;
+  }
+
+  // Basic email validation
+  if (!email.contains('@') || !email.contains('.')) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Please enter a valid email address')),
+    );
+    return;
+  }
+
+  try {
+    final db = ref.read(appDatabaseProvider);
+    final authService = ref.read(googleAuthServiceProvider);
+    final gmailService = GmailService(authService);
+    final sheetsService = SheetsService(authService);
+    final loggingService = LoggingService(db);
+    final requestService = RequestService(
+      db,
+      sheetsService,
+      authService,
+      gmailService,
+      loggingService,
+    );
+
+    await requestService.addParticipantsToConversation(conversationId, [
+      email.trim(),
+    ]);
+
+    // Invalidate providers to refresh UI
+    ref.invalidate(conversationParticipantsProvider(conversationId));
+
+    if (context.mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Added ${email.trim()} to conversation')),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+}
+
+Future<void> _removeParticipant(
+  BuildContext context,
+  WidgetRef ref,
+  String conversationId,
+  String email,
+) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder:
+        (dialogContext) => AlertDialog(
+          title: const Text('Remove Participant'),
+          content: Text(
+            'Are you sure you want to remove $email from this conversation?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Remove'),
+            ),
+          ],
+        ),
+  );
+
+  if (confirmed != true) return;
+
+  try {
+    final db = ref.read(appDatabaseProvider);
+    final authService = ref.read(googleAuthServiceProvider);
+    final gmailService = GmailService(authService);
+    final sheetsService = SheetsService(authService);
+    final loggingService = LoggingService(db);
+    final requestService = RequestService(
+      db,
+      sheetsService,
+      authService,
+      gmailService,
+      loggingService,
+    );
+
+    await requestService.removeParticipantsFromConversation(conversationId, [
+      email,
+    ]);
+
+    // Invalidate providers to refresh UI
+    ref.invalidate(conversationParticipantsProvider(conversationId));
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Removed $email from conversation')),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
+  }
+}
+
 /// Participant Tile - cleaner design
 class _ParticipantTile extends StatelessWidget {
   final models.RecipientStatus participant;
+  final String conversationId;
+  final VoidCallback onRemove;
 
-  const _ParticipantTile({required this.participant});
+  const _ParticipantTile({
+    required this.participant,
+    required this.conversationId,
+    required this.onRemove,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1282,17 +1561,44 @@ class _ParticipantTile extends StatelessWidget {
           participant.lastResponseAt != null
               ? Text(
                 'Responded ${_formatRelativeTime(participant.lastResponseAt!)}',
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                style: TextStyle(
+                  fontSize: 11,
+                  color:
+                      Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.color?.withOpacity(0.6) ??
+                      Colors.grey[600],
+                ),
               )
               : participant.reminderSentAt != null
               ? Text(
                 'Reminder sent ${_formatRelativeTime(participant.reminderSentAt!)}',
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                style: TextStyle(
+                  fontSize: 11,
+                  color:
+                      Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.color?.withOpacity(0.6) ??
+                      Colors.grey[600],
+                ),
               )
               : Text(
                 statusText,
-                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                style: TextStyle(
+                  fontSize: 11,
+                  color:
+                      Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.color?.withOpacity(0.6) ??
+                      Colors.grey[600],
+                ),
               ),
+      trailing: IconButton(
+        icon: const Icon(Icons.delete_outline, size: 18),
+        color: Colors.grey[600],
+        onPressed: onRemove,
+        tooltip: 'Remove participant',
+      ),
     );
   }
 
@@ -1341,7 +1647,14 @@ class _SchemaTab extends ConsumerWidget {
               padding: const EdgeInsets.all(24),
               child: Text(
                 'No schema defined yet.\nUse the AI agent to define a schema, or create a request to define the schema.',
-                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                style: TextStyle(
+                  color:
+                      Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.color?.withOpacity(0.6) ??
+                      Colors.grey[600],
+                  fontSize: 13,
+                ),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -1385,13 +1698,20 @@ class _SchemaTab extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
-                  color: Colors.grey[900],
+                  color: Theme.of(context).textTheme.titleLarge?.color,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Columns defined for this conversation',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                style: TextStyle(
+                  fontSize: 12,
+                  color:
+                      Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.color?.withOpacity(0.6) ??
+                      Colors.grey[600],
+                ),
               ),
               const SizedBox(height: 20),
               // Columns list
@@ -1399,13 +1719,28 @@ class _SchemaTab extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.grey[50],
+                    color:
+                        Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey[800]
+                            : Colors.grey[50],
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[200]!),
+                    border: Border.all(
+                      color:
+                          Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[700]!
+                              : Colors.grey[200]!,
+                    ),
                   ),
                   child: Text(
                     'No columns defined',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    style: TextStyle(
+                      color:
+                          Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.color?.withOpacity(0.6) ??
+                          Colors.grey[600],
+                      fontSize: 13,
+                    ),
                   ),
                 )
               else
@@ -1485,9 +1820,17 @@ class _SchemaColumnCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
+        color:
+            Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey[800]
+                : Colors.grey[50],
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[200]!),
+        border: Border.all(
+          color:
+              Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey[700]!
+                  : Colors.grey[200]!,
+        ),
       ),
       child: Row(
         children: [
@@ -1559,7 +1902,14 @@ class _SchemaColumnCard extends StatelessWidget {
                     const SizedBox(width: 4),
                     Text(
                       typeDisplay,
-                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color:
+                            Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.color?.withOpacity(0.6) ??
+                            Colors.grey[600],
+                      ),
                     ),
                   ],
                 ),
@@ -1592,7 +1942,14 @@ class _ActivityTab extends ConsumerWidget {
               padding: const EdgeInsets.all(24),
               child: Text(
                 'No activity yet',
-                style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                style: TextStyle(
+                  color:
+                      Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.color?.withOpacity(0.6) ??
+                      Colors.grey[600],
+                  fontSize: 13,
+                ),
               ),
             ),
           );
@@ -1730,7 +2087,14 @@ class _ActivityItem extends ConsumerWidget {
                   children: [
                     Text(
                       _formatTime(log.timestamp),
-                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color:
+                            Theme.of(
+                              context,
+                            ).textTheme.bodySmall?.color?.withOpacity(0.6) ??
+                            Colors.grey[600],
+                      ),
                     ),
                     if (showReparse) ...[
                       const SizedBox(width: 8),

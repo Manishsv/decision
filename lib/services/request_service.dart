@@ -13,6 +13,7 @@ import 'package:decision_agent/domain/request_schema.dart';
 import 'package:decision_agent/domain/email_protocol.dart';
 import 'package:decision_agent/utils/ids.dart';
 import 'dart:async';
+import 'dart:convert';
 
 class RequestService {
   final AppDatabase _db;
@@ -479,6 +480,168 @@ class RequestService {
     await _db.updateRequest(
       requestId,
       RequestsCompanion(isTemplate: const Value(true)),
+    );
+  }
+
+  /// Add participants to a conversation
+  /// Adds the participants to all existing requests in the conversation
+  /// [conversationId] - The conversation ID
+  /// [participantEmails] - List of email addresses to add
+  Future<void> addParticipantsToConversation(
+    String conversationId,
+    List<String> participantEmails,
+  ) async {
+    // Get all requests for this conversation
+    final requests = await _db.getRequestsByConversation(conversationId);
+
+    if (requests.isEmpty) {
+      throw Exception('No requests found in conversation');
+    }
+
+    // Add participants to each request
+    for (final request in requests) {
+      // Create recipient status entries for new participants
+      for (final email in participantEmails) {
+        // Check if participant already exists for this request
+        final existingStatuses = await _db.getRecipientStatuses(
+          request.requestId,
+        );
+        final exists = existingStatuses.any(
+          (s) => s.email.toLowerCase() == email.toLowerCase(),
+        );
+
+        if (!exists) {
+          // Add as pending participant
+          await _db.upsertRecipientStatus(
+            models.RecipientStatus(
+              requestId: request.requestId,
+              email: email,
+              status: models.RecipientState.pending,
+              lastMessageId: null,
+              lastResponseAt: null,
+              reminderSentAt: null,
+              note: null,
+            ),
+          );
+
+          // Log activity
+          await _loggingService.logActivity(
+            request.requestId,
+            models.ActivityType.ingestionCheck,
+            {'action': 'participant_added', 'email': email},
+          );
+        }
+      }
+
+      // Update request recipients list if needed
+      final currentRecipients = request.recipients;
+      final updatedRecipients = <String>[...currentRecipients];
+      for (final email in participantEmails) {
+        if (!updatedRecipients.any(
+          (r) => r.toLowerCase() == email.toLowerCase(),
+        )) {
+          updatedRecipients.add(email);
+        }
+      }
+
+      // Update request if recipients changed
+      if (updatedRecipients.length != currentRecipients.length) {
+        await _db.updateRequest(
+          request.requestId,
+          RequestsCompanion(
+            recipientsJson: Value(jsonEncode(updatedRecipients)),
+          ),
+        );
+      }
+    }
+
+    // Update conversation's updatedAt timestamp
+    final allConversations = await _db.getConversations(includeArchived: true);
+    final conversationToUpdate = allConversations.firstWhere(
+      (c) => c.id == conversationId,
+      orElse: () => throw Exception('Conversation not found'),
+    );
+
+    await _db.insertConversation(
+      ConversationsCompanion.insert(
+        id: conversationToUpdate.id,
+        kind: conversationToUpdate.kind.index,
+        title: conversationToUpdate.title,
+        sheetId: conversationToUpdate.sheetId,
+        sheetUrl: conversationToUpdate.sheetUrl,
+        archived: Value(conversationToUpdate.archived),
+        createdAt: conversationToUpdate.createdAt,
+        updatedAt: DateTime.now(),
+      ),
+    );
+  }
+
+  /// Remove participants from a conversation
+  /// Removes the participants from all requests in the conversation
+  /// [conversationId] - The conversation ID
+  /// [participantEmails] - List of email addresses to remove
+  Future<void> removeParticipantsFromConversation(
+    String conversationId,
+    List<String> participantEmails,
+  ) async {
+    // Get all requests for this conversation
+    final requests = await _db.getRequestsByConversation(conversationId);
+
+    // Remove participants from each request
+    for (final request in requests) {
+      for (final email in participantEmails) {
+        // Delete recipient status entries
+        await _db.deleteRecipientStatus(request.requestId, email);
+
+        // Log activity
+        await _loggingService.logActivity(
+          request.requestId,
+          models.ActivityType.ingestionCheck,
+          {'action': 'participant_removed', 'email': email},
+        );
+      }
+
+      // Update request recipients list
+      final currentRecipients = request.recipients;
+      final updatedRecipients =
+          currentRecipients
+              .where(
+                (r) =>
+                    !participantEmails.any(
+                      (e) => e.toLowerCase() == r.toLowerCase(),
+                    ),
+              )
+              .toList();
+
+      // Update request if recipients changed
+      if (updatedRecipients.length != currentRecipients.length) {
+        await _db.updateRequest(
+          request.requestId,
+          RequestsCompanion(
+            recipientsJson: Value(jsonEncode(updatedRecipients)),
+          ),
+        );
+      }
+    }
+
+    // Update conversation's updatedAt timestamp
+    final allConversations = await _db.getConversations(includeArchived: true);
+    final conversationToUpdate = allConversations.firstWhere(
+      (c) => c.id == conversationId,
+      orElse: () => throw Exception('Conversation not found'),
+    );
+
+    await _db.insertConversation(
+      ConversationsCompanion.insert(
+        id: conversationToUpdate.id,
+        kind: conversationToUpdate.kind.index,
+        title: conversationToUpdate.title,
+        sheetId: conversationToUpdate.sheetId,
+        sheetUrl: conversationToUpdate.sheetUrl,
+        archived: Value(conversationToUpdate.archived),
+        createdAt: conversationToUpdate.createdAt,
+        updatedAt: DateTime.now(),
+      ),
     );
   }
 }

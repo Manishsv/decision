@@ -1124,13 +1124,27 @@ IMPORTANT: For new conversations without previous requests, you need to ask the 
         return {'success': false, 'error': 'participant_emails is required'};
       }
 
-      // For now, participants are added when creating a new request
-      // This tool acknowledges the request and informs the user
+      // Convert to list of strings
+      final emails = participantEmails.map((e) => e.toString().trim()).toList();
+
+      // Validate email addresses
+      for (final email in emails) {
+        if (!email.contains('@') || !email.contains('.')) {
+          return {'success': false, 'error': 'Invalid email address: $email'};
+        }
+      }
+
+      // Add participants to the conversation
+      await _requestService.addParticipantsToConversation(
+        conversationId,
+        emails,
+      );
+
       return {
         'success': true,
         'message':
-            'Participants will be included in the next request you create. Use the "create_request" function to send them a request now.',
-        'participants': participantEmails.map((e) => e.toString()).toList(),
+            'Successfully added ${emails.length} participant(s) to the conversation: ${emails.join(", ")}',
+        'participants': emails,
       };
     } catch (e) {
       return {'success': false, 'error': e.toString()};

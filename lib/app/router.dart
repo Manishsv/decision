@@ -2,6 +2,7 @@ import 'package:go_router/go_router.dart';
 import 'package:decision_agent/features/onboarding/onboarding_page.dart';
 import 'package:decision_agent/features/home/home_page.dart';
 import 'package:decision_agent/features/settings/settings_page.dart';
+import 'package:decision_agent/features/profile/profile_page.dart';
 import 'package:decision_agent/features/request_builder/request_builder_page.dart';
 import 'package:decision_agent/app/auth_guard.dart';
 import 'package:decision_agent/app/splash_page.dart';
@@ -26,6 +27,10 @@ final router = GoRouter(
       builder: (context, state) => const SettingsPage(),
     ),
     GoRoute(
+      path: '/profile',
+      builder: (context, state) => const ProfilePage(),
+    ),
+    GoRoute(
       path: '/request/new',
       builder: (context, state) {
         final conversationId = state.uri.queryParameters['conversationId'];
@@ -46,8 +51,9 @@ final router = GoRouter(
     final isOnboarding = state.matchedLocation == '/onboarding';
     final isHome = state.matchedLocation == '/home';
     final isSettings = state.matchedLocation == '/settings';
+    final isProfile = state.matchedLocation == '/profile';
     final isRequestBuilder = state.matchedLocation == '/request/new';
-    final isProtectedRoute = isHome || isSettings || isRequestBuilder;
+    final isProtectedRoute = isHome || isSettings || isProfile || isRequestBuilder;
     
     // Check authentication status
     final isAuthenticated = await checkAuthStatus();

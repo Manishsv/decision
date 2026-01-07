@@ -23,5 +23,37 @@ final authStatusProvider = FutureProvider<bool>((ref) async {
   return await authService.isAuthenticated();
 });
 
+/// User profile information
+class UserProfile {
+  final String email;
+  final String? name;
+  final String? pictureUrl;
+
+  UserProfile({
+    required this.email,
+    this.name,
+    this.pictureUrl,
+  });
+}
+
+/// Provider for user profile information
+final userProfileProvider = FutureProvider<UserProfile?>((ref) async {
+  final authService = ref.read(googleAuthServiceProvider);
+  
+  try {
+    final email = await authService.getUserEmail();
+    final name = await authService.getUserName();
+    final pictureUrl = await authService.getUserPicture();
+    
+    return UserProfile(
+      email: email,
+      name: name,
+      pictureUrl: pictureUrl,
+    );
+  } catch (e) {
+    return null;
+  }
+});
+
 /// Export the global auth service for use in auth_guard
 GoogleAuthService get globalAuthService => _globalAuthService;

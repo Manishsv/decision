@@ -36,11 +36,15 @@ String? _extractEmailFromIdToken(String idToken) {
 const String _refreshTokenKey = 'google_refresh_token';
 const String _accessTokenKey = 'google_access_token';
 const String _userEmailKey = 'user_email';
+const String _userNameKey = 'user_name';
+const String _userPictureKey = 'user_picture';
 
 class GoogleAuthService {
   static const _appAuth = FlutterAppAuth();
   final AppDatabase _db;
   String? _userEmail;
+  String? _userName;
+  String? _userPicture;
   String? _cachedAccessToken; // Memory cache for performance
 
   GoogleAuthService(AppDatabase db) : _db = db;
@@ -74,8 +78,10 @@ class GoogleAuthService {
 
       debugPrint('OAuth2 authorization successful');
 
-      // Get user email
+      // Get user info (email, name, picture)
       String? email;
+      String? name;
+      String? picture;
 
       try {
         // Fetch user info using the access token
@@ -89,6 +95,8 @@ class GoogleAuthService {
         if (response.statusCode == 200) {
           final userInfo = json.decode(response.body) as Map<String, dynamic>;
           email = userInfo['email'] as String?;
+          name = userInfo['name'] as String?;
+          picture = userInfo['picture'] as String?;
         }
       } catch (e) {
         debugPrint('Could not fetch user info: $e');
@@ -103,6 +111,8 @@ class GoogleAuthService {
       }
 
       _userEmail = email;
+      _userName = name;
+      _userPicture = picture;
 
       // Store tokens in database (cross-platform, works on Windows, macOS, Linux)
       if (result.accessToken != null) {
@@ -116,7 +126,13 @@ class GoogleAuthService {
         debugPrint('Refresh token stored in database');
       }
       await _db.saveCredential(_userEmailKey, email);
-      debugPrint('User email stored in database');
+      if (name != null && name.isNotEmpty) {
+        await _db.saveCredential(_userNameKey, name);
+      }
+      if (picture != null && picture.isNotEmpty) {
+        await _db.saveCredential(_userPictureKey, picture);
+      }
+      debugPrint('User info stored in database');
 
       debugPrint('OAuth2 authorization successful for email: $email');
     } catch (e, stack) {
@@ -143,7 +159,11 @@ class GoogleAuthService {
       await _db.deleteCredential(_accessTokenKey);
       await _db.deleteCredential(_refreshTokenKey);
       await _db.deleteCredential(_userEmailKey);
+      await _db.deleteCredential(_userNameKey);
+      await _db.deleteCredential(_userPictureKey);
       _userEmail = null;
+      _userName = null;
+      _userPicture = null;
       _cachedAccessToken = null; // Clear memory cache
       debugPrint('OAuth2 Sign-Out successful');
     } catch (e) {
@@ -194,6 +214,46 @@ class GoogleAuthService {
     throw Exception('User email not available. Please sign in again.');
   }
 
+  /// Get user name
+  Future<String?> getUserName() async {
+    if (_userName != null) {
+      return _userName;
+    }
+
+    // Get from database
+    try {
+      final cached = await _db.getCredential(_userNameKey);
+      if (cached != null && cached.isNotEmpty) {
+        _userName = cached;
+        return cached;
+      }
+    } catch (e) {
+      debugPrint('Error reading user name from database: $e');
+    }
+
+    return null;
+  }
+
+  /// Get user profile picture URL
+  Future<String?> getUserPicture() async {
+    if (_userPicture != null) {
+      return _userPicture;
+    }
+
+    // Get from database
+    try {
+      final cached = await _db.getCredential(_userPictureKey);
+      if (cached != null && cached.isNotEmpty) {
+        _userPicture = cached;
+        return cached;
+      }
+    } catch (e) {
+      debugPrint('Error reading user picture from database: $e');
+    }
+
+    return null;
+  }
+
   /// Check if user is authenticated and token is valid
   /// Validates the access token by making a test API call
   Future<bool> isAuthenticated() async {
@@ -220,10 +280,20 @@ class GoogleAuthService {
           // Token is valid
           final userInfo = json.decode(response.body) as Map<String, dynamic>;
           final email = userInfo['email'] as String?;
+          final name = userInfo['name'] as String?;
+          final picture = userInfo['picture'] as String?;
           if (email != null) {
             _userEmail = email;
-            // Update stored email in database
+            // Update stored user info in database
             await _db.saveCredential(_userEmailKey, email);
+            if (name != null && name.isNotEmpty) {
+              _userName = name;
+              await _db.saveCredential(_userNameKey, name);
+            }
+            if (picture != null && picture.isNotEmpty) {
+              _userPicture = picture;
+              await _db.saveCredential(_userPictureKey, picture);
+            }
           }
           return true;
         } else if (response.statusCode == 401) {

@@ -342,6 +342,13 @@ extension AppDatabaseDao on AppDatabase {
         .toList();
   }
 
+  /// Delete a recipient status entry
+  Future<void> deleteRecipientStatus(String requestId, String email) async {
+    await (delete(recipientStatusTable)..where(
+      (r) => r.requestId.equals(requestId) & r.email.equals(email),
+    )).go();
+  }
+
   // Activity Log
   Future<void> insertActivityLog(models.ActivityLogEntry entry) async {
     await into(activityLog).insert(

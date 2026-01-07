@@ -59,7 +59,7 @@ class DataRequest {
   final String ownerEmail;
   final DateTime dueAt;
   final RequestSchema schema;
-  final List<String> recipients; // TODO: Rename to participants in terminology
+  final List<String> recipients; // Email addresses of participants
   final ReplyFormat replyFormat; // Always table in MVP
   final String? gmailThreadId;
   final DateTime? lastIngestAt;
