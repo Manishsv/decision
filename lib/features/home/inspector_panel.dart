@@ -97,8 +97,13 @@ final conversationParticipantsProvider = FutureProvider.family<
   return uniqueStatuses.values.toList();
 });
 
+/// Pagination configuration for activity logs
+const int _activityLogsPageSize = 50;
+const int _activityLogsInitialLimit = 50;
+const int _activityLogsMaxLimit = 200;
+
 /// Provider for all activity logs across all requests in a conversation
-/// Limits to most recent 200 logs total for performance
+/// Loads initial batch of 50 logs
 final conversationActivityLogsProvider = FutureProvider.family<
   List<models.ActivityLogEntry>,
   String
@@ -109,10 +114,14 @@ final conversationActivityLogsProvider = FutureProvider.family<
   // Get all requests for this conversation
   final requests = await db.getRequestsByConversation(conversationId);
 
-  // Get activity logs for all requests (limit per request to prevent too many)
-  // Use a smaller limit per request so total doesn't exceed ~200 logs
+  if (requests.isEmpty) {
+    return [];
+  }
+
+  // Get activity logs for all requests
+  // Limit per request to get ~50 total logs initially
   final limitPerRequest =
-      requests.isEmpty ? 50 : (200 / requests.length).ceil().clamp(10, 100);
+      (_activityLogsInitialLimit / requests.length).ceil().clamp(10, 100);
 
   final allLogs = <models.ActivityLogEntry>[];
   for (final request in requests) {
@@ -126,8 +135,8 @@ final conversationActivityLogsProvider = FutureProvider.family<
   // Sort by timestamp (most recent first)
   allLogs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-  // Limit total to 200 most recent
-  return allLogs.take(200).toList();
+  // Limit to initial page size
+  return allLogs.take(_activityLogsInitialLimit).toList();
 });
 
 class InspectorPanel extends ConsumerStatefulWidget {

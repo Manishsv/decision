@@ -13,12 +13,72 @@ import 'package:decision_agent/data/google/gmail_service.dart';
 import 'package:decision_agent/services/logging_service.dart';
 import 'package:decision_agent/utils/error_handling.dart';
 
-class ConversationList extends ConsumerWidget {
+class ConversationList extends ConsumerStatefulWidget {
   const ConversationList({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final conversationsAsync = ref.watch(conversationsProvider);
+  ConsumerState<ConversationList> createState() => _ConversationListState();
+}
+
+class _ConversationListState extends ConsumerState<ConversationList> {
+  final List<models.Conversation> _loadedConversations = [];
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load initial conversations
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadConversations(ref, append: false);
+    });
+  }
+
+  Future<void> _loadConversations(
+    WidgetRef ref, {
+    bool append = true,
+  }) async {
+    if (_isLoadingMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      final db = ref.read(appDatabaseProvider);
+      final offset = append ? _loadedConversations.length : 0;
+      final newConversations = await db.getConversations(
+        limit: 50, // _conversationsPageSize
+        offset: offset,
+      );
+
+      setState(() {
+        if (append) {
+          _loadedConversations.addAll(newConversations);
+        } else {
+          _loadedConversations.clear();
+          _loadedConversations.addAll(newConversations);
+        }
+        _hasMore = newConversations.length >= 50; // _conversationsPageSize
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingMore = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ErrorHandler.getUserFriendlyMessage(e)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final selectedId = ref.watch(selectedConversationIdProvider);
 
     return Column(
@@ -40,6 +100,8 @@ class ConversationList extends ConsumerWidget {
                 icon: const Icon(Icons.refresh),
                 onPressed: () {
                   // Refresh conversations list
+                  _loadConversations(ref, append: false);
+                  // Also invalidate the provider for other components
                   ref.invalidate(conversationsProvider);
                 },
                 tooltip: 'Refresh',
@@ -49,11 +111,13 @@ class ConversationList extends ConsumerWidget {
                 onPressed: () async {
                   try {
                     await ConversationListHelper.createNewConversation(context, ref);
+                    // Refresh after creating
+                    _loadConversations(ref, append: false);
                   } catch (e) {
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Error creating conversation: $e'),
+                          content: Text(ErrorHandler.getUserFriendlyMessage(e)),
                           backgroundColor: Colors.red,
                         ),
                       );
@@ -68,79 +132,72 @@ class ConversationList extends ConsumerWidget {
         const Divider(height: 1),
         // List
         Expanded(
-          child: conversationsAsync.when(
-            data: (conversations) {
-              if (conversations.isEmpty) {
-                return Center(
+          child: _loadedConversations.isEmpty && _isLoadingMore
+              ? const Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      'No conversations yet',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 14,
-                      ),
-                    ),
+                    padding: EdgeInsets.all(16.0),
+                    child: CircularProgressIndicator(),
                   ),
-                );
-              }
+                )
+              : _loadedConversations.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                          'No conversations yet',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _loadedConversations.length + (_hasMore ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        // Show "Load More" button at the end
+                        if (index == _loadedConversations.length) {
+                          return Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Center(
+                              child: _isLoadingMore
+                                  ? const CircularProgressIndicator()
+                                  : ElevatedButton.icon(
+                                      onPressed: () {
+                                        _loadConversations(ref, append: true);
+                                      },
+                                      icon: const Icon(Icons.expand_more),
+                                      label: const Text('Load More'),
+                                    ),
+                            ),
+                          );
+                        }
 
-              return ListView.builder(
-                itemCount: conversations.length,
-                itemBuilder: (context, index) {
-                  final conversation = conversations[index];
-                  final isSelected = conversation.id == selectedId;
+                        final conversation = _loadedConversations[index];
+                        final isSelected = conversation.id == selectedId;
 
-                  return _ConversationListItem(
-                    conversation: conversation,
-                    isSelected: isSelected,
-                    onTap: () {
-                      ref.read(selectedConversationIdProvider.notifier).state = conversation.id;
-                    },
-                    onArchive: () async {
-                      await _archiveConversation(context, ref, conversation.id);
-                    },
-                    onDelete: () async {
-                      await _deleteConversation(context, ref, conversation);
-                    },
-                  );
-                },
-              );
-            },
-            loading: () => const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: CircularProgressIndicator(),
-              ),
-            ),
-            error: (error, stack) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  'Error loading conversations: $error',
-                  style: TextStyle(color: Colors.red[700]),
-                ),
-              ),
-            ),
-          ),
+                        return _ConversationListItem(
+                          conversation: conversation,
+                          isSelected: isSelected,
+                          onTap: () {
+                            ref.read(selectedConversationIdProvider.notifier).state = conversation.id;
+                          },
+                          onArchive: () async {
+                            await _archiveConversation(context, ref, conversation.id);
+                            // Refresh list after archiving
+                            _loadConversations(ref, append: false);
+                          },
+                          onDelete: () async {
+                            await _deleteConversation(context, ref, conversation);
+                            // Refresh list after deleting
+                            _loadConversations(ref, append: false);
+                          },
+                        );
+                      },
+                    ),
         ),
       ],
     );
-  }
-
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      return 'Today';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
-    } else {
-      return '${date.month}/${date.day}/${date.year}';
-    }
   }
 
   Future<void> _archiveConversation(
@@ -151,8 +208,6 @@ class ConversationList extends ConsumerWidget {
     try {
       final db = ref.read(appDatabaseProvider);
       await db.archiveConversation(conversationId);
-      // Refresh conversations list
-      ref.invalidate(conversationsProvider);
       // Clear selection if this conversation was selected
       final selectedId = ref.read(selectedConversationIdProvider);
       if (selectedId == conversationId) {
@@ -209,8 +264,6 @@ class ConversationList extends ConsumerWidget {
     try {
       final db = ref.read(appDatabaseProvider);
       await db.deleteConversation(conversation.id);
-      // Refresh conversations list
-      ref.invalidate(conversationsProvider);
       // Clear selection if this conversation was selected
       final selectedId = ref.read(selectedConversationIdProvider);
       if (selectedId == conversation.id) {

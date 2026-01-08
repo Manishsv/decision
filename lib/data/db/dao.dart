@@ -52,6 +52,18 @@ extension AppDatabaseDao on AppDatabase {
         .toList();
   }
 
+  /// Get count of conversations
+  /// [includeArchived] - Whether to include archived conversations
+  Future<int> countConversations({bool includeArchived = false}) async {
+    final query = selectOnly(conversations)
+      ..addColumns([conversations.id.count()]);
+    if (!includeArchived) {
+      query..where(conversations.archived.equals(false));
+    }
+    final result = await query.getSingle();
+    return result.read(conversations.id.count()) ?? 0;
+  }
+
   Future<void> archiveConversation(String conversationId) async {
     await (update(conversations)
       ..where((c) => c.id.equals(conversationId))).write(

@@ -84,8 +84,62 @@ Consider implementing **Option 1 (Backend Proxy)** if:
    - Limit to specific IPs if possible (not feasible for desktop apps)
    - Use domain verification if applicable
 
+## Credential Storage
+
+### Current Implementation
+The app stores OAuth tokens and API keys in a SQLite database (`Credentials` table). While the database file is stored in the user's application documents directory, it is **not encrypted** at rest.
+
+### Security Considerations
+
+⚠️ **Database Storage Risks**:
+1. **Not encrypted**: Credentials are stored in plain text in SQLite
+2. **File access**: Anyone with file system access can read the database
+3. **Backup exposure**: Database may be included in Time Machine/cloud backups
+
+✅ **Current Mitigations**:
+1. **User documents directory**: Database is in user-controlled location
+2. **OS-level permissions**: Protected by macOS file permissions
+3. **Not in shared locations**: Not accessible to other apps by default
+
+### Recommended Improvements
+
+**Option 1: Use flutter_secure_storage (Recommended for macOS)**
+- Use `flutter_secure_storage` package (already in dependencies)
+- Stores credentials in macOS Keychain
+- Encrypted by the OS
+- More secure than SQLite for sensitive data
+
+**Option 2: Encrypt SQLite Database**
+- Add encryption layer (SQLCipher or similar)
+- Requires encryption key management
+- More complex implementation
+
+**Option 3: Accept Current Risk (MVP)**
+- Acceptable for MVP if:
+  - Single-user desktop app
+  - Users understand the security model
+  - Data is not highly sensitive
+- Document the limitation clearly
+
+## SQL Injection Protection
+
+✅ **Good News**: All database queries use Drift's type-safe query builder, which automatically parameterizes all queries. This protects against SQL injection attacks.
+
+- All queries use `select()`, `insert()`, `update()`, `delete()` builders
+- No string interpolation or concatenation in SQL
+- All values are properly escaped by Drift
+
+## Input Validation
+
+✅ **Input validation is in place**:
+- Email validation with user-friendly messages
+- OpenAI API key format validation
+- Required field validation in request creation
+- All validation errors are user-friendly
+
 ## References
 
 - [Google OAuth 2.0 for Desktop Apps](https://developers.google.com/identity/protocols/oauth2/native-app)
 - [PKCE RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636)
 - [OAuth 2.0 Security Best Practices](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics)
+- [Flutter Secure Storage](https://pub.dev/packages/flutter_secure_storage)
