@@ -98,7 +98,6 @@ final conversationParticipantsProvider = FutureProvider.family<
 });
 
 /// Pagination configuration for activity logs
-const int _activityLogsPageSize = 50;
 const int _activityLogsInitialLimit = 50;
 const int _activityLogsMaxLimit = 200;
 
@@ -1957,56 +1956,160 @@ class _SchemaColumnCard extends StatelessWidget {
   }
 }
 
-/// Activity Tab: Timeline of all activities
-class _ActivityTab extends ConsumerWidget {
+/// Activity Tab: Timeline of all activities with pagination
+class _ActivityTab extends ConsumerStatefulWidget {
   final String conversationId;
 
   const _ActivityTab({required this.conversationId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final activityLogsAsync = ref.watch(
-      conversationActivityLogsProvider(conversationId),
-    );
+  ConsumerState<_ActivityTab> createState() => _ActivityTabState();
+}
 
-    return activityLogsAsync.when(
-      data: (logs) {
-        if (logs.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(
-                'No activity yet',
-                style: TextStyle(
-                  color:
-                      Theme.of(
-                        context,
-                      ).textTheme.bodySmall?.color?.withOpacity(0.6) ??
-                      Colors.grey[600],
-                  fontSize: 13,
-                ),
-              ),
+class _ActivityTabState extends ConsumerState<_ActivityTab> {
+  final List<models.ActivityLogEntry> _loadedLogs = [];
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
+  bool _isInitialLoad = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load initial logs
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadActivityLogs(ref, append: false);
+    });
+  }
+
+  Future<void> _loadActivityLogs(
+    WidgetRef ref, {
+    bool append = true,
+  }) async {
+    if (_isLoadingMore) return;
+
+    setState(() {
+      _isLoadingMore = true;
+      _isInitialLoad = false;
+    });
+
+    try {
+      final db = ref.read(appDatabaseProvider);
+      final loggingService = LoggingService(db);
+
+      // Get all requests for this conversation
+      final requests = await db.getRequestsByConversation(widget.conversationId);
+
+      if (requests.isEmpty) {
+        setState(() {
+          _loadedLogs.clear();
+          _hasMore = false;
+          _isLoadingMore = false;
+        });
+        return;
+      }
+
+      // Calculate how many logs to fetch per request
+      final currentLimit = append
+          ? _loadedLogs.length + _activityLogsInitialLimit
+          : _activityLogsInitialLimit;
+      final totalLimit = currentLimit.clamp(0, _activityLogsMaxLimit);
+      final limitPerRequest =
+          (totalLimit / requests.length).ceil().clamp(10, 100);
+
+      final allLogs = <models.ActivityLogEntry>[];
+      for (final request in requests) {
+        final logs = await loggingService.getActivityLogs(
+          request.requestId,
+          limit: limitPerRequest,
+        );
+        allLogs.addAll(logs);
+      }
+
+      // Sort by timestamp (most recent first)
+      allLogs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+      // Limit to max
+      final limitedLogs = allLogs.take(totalLimit).toList();
+
+      setState(() {
+        if (append) {
+          // Merge with existing, removing duplicates
+          final existingIds = _loadedLogs.map((l) => l.id).toSet();
+          final newLogs =
+              limitedLogs.where((l) => !existingIds.contains(l.id)).toList();
+          _loadedLogs.addAll(newLogs);
+          _loadedLogs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+        } else {
+          _loadedLogs.clear();
+          _loadedLogs.addAll(limitedLogs);
+        }
+        _hasMore = limitedLogs.length >= totalLimit &&
+            totalLimit < _activityLogsMaxLimit;
+        _isLoadingMore = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingMore = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(ErrorHandler.getUserFriendlyMessage(e)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isInitialLoad && _loadedLogs.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_loadedLogs.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'No activity yet',
+            style: TextStyle(
+              color:
+                  Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.6) ??
+                  Colors.grey[600],
+              fontSize: 13,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _loadedLogs.length + (_hasMore ? 1 : 0),
+      itemBuilder: (context, index) {
+        // Show "Load More" button at the end
+        if (index == _loadedLogs.length) {
+          return Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Center(
+              child: _isLoadingMore
+                  ? const CircularProgressIndicator()
+                  : ElevatedButton.icon(
+                      onPressed: () {
+                        _loadActivityLogs(ref, append: true);
+                      },
+                      icon: const Icon(Icons.expand_more),
+                      label: const Text('Load More Activity'),
+                    ),
             ),
           );
         }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: logs.length,
-          itemBuilder: (context, index) {
-            final log = logs[index];
-            return _ActivityItem(log: log, conversationId: conversationId);
-          },
-        );
+        final log = _loadedLogs[index];
+        return _ActivityItem(log: log, conversationId: widget.conversationId);
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error:
-          (error, stack) => Center(
-            child: Text(
-              ErrorHandler.getUserFriendlyMessage(error),
-              style: const TextStyle(fontSize: 12),
-            ),
-          ),
     );
   }
 }
