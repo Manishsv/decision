@@ -105,7 +105,27 @@ class AIChatMessages extends Table {
   TextColumn get conversationId => text()(); // Links to conversation
   TextColumn get role => text()(); // 'user' or 'assistant'
   TextColumn get content => text()(); // Message content
+  TextColumn get imageBase64 =>
+      text().nullable()(); // Base64-encoded image for visualizations
+  TextColumn get suggestionsJson =>
+      text().nullable()(); // JSON array of analysis suggestions
   DateTimeColumn get timestamp => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+/// Saved Analyses table
+/// Stores saved Python analysis scripts for reuse
+class SavedAnalyses extends Table {
+  TextColumn get id => text()(); // Unique analysis ID
+  TextColumn get conversationId => text()(); // Links to conversation
+  TextColumn get title => text()(); // User-friendly name
+  TextColumn get pythonCode => text()(); // Generated Python code
+  TextColumn get analysisType => text()(); // e.g., "trend", "distribution"
+  TextColumn get parametersJson =>
+      text().nullable()(); // Optional parameters as JSON
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -120,13 +140,14 @@ class AIChatMessages extends Table {
     ProcessedMessages,
     Credentials,
     AIChatMessages,
+    SavedAnalyses,
   ],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 8; // Bumped to 8 to add database indexes
+  int get schemaVersion => 11; // Bumped to 11 to add suggestionsJson to AIChatMessages
 
   @override
   MigrationStrategy get migration {
@@ -213,6 +234,18 @@ class AppDatabase extends _$AppDatabase {
         if (from < 8) {
           // Add database indexes in version 8 for better query performance
           await _createIndexes(m);
+        }
+        if (from < 9) {
+          // Add SavedAnalyses table in version 9
+          await m.createTable(savedAnalyses);
+        }
+        if (from < 10) {
+          // Add imageBase64 column to AIChatMessages table in version 10
+          await m.addColumn(aIChatMessages, aIChatMessages.imageBase64);
+        }
+        if (from < 11) {
+          // Add suggestionsJson column to AIChatMessages table in version 11
+          await m.addColumn(aIChatMessages, aIChatMessages.suggestionsJson);
         }
       },
     );

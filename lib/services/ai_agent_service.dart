@@ -14,6 +14,7 @@ import 'package:decision_agent/data/google/gmail_service.dart';
 import 'package:googleapis/gmail/v1.dart' as gmail;
 import 'package:decision_agent/services/request_service.dart';
 import 'package:decision_agent/services/logging_service.dart';
+import 'package:decision_agent/services/visualization_service.dart';
 import 'package:decision_agent/domain/models.dart' as models;
 import 'package:decision_agent/domain/email_protocol.dart';
 import 'package:decision_agent/domain/request_schema.dart';
@@ -27,12 +28,45 @@ class AIMessage {
   final String role; // 'user' or 'assistant'
   final String content;
   final DateTime timestamp;
+  final String? imageBase64; // Base64-encoded image for visualizations
+  final List<AnalysisSuggestion>? suggestions; // Suggested analyses
+  final String? savedAnalysisId; // ID of saved analysis if applicable
 
   AIMessage({
     required this.role,
     required this.content,
     required this.timestamp,
+    this.imageBase64,
+    this.suggestions,
+    this.savedAnalysisId,
   });
+}
+
+/// Analysis suggestion from AI
+class AnalysisSuggestion {
+  final String id;
+  final String title;
+  final String description;
+  final String analysisType;
+  final Map<String, dynamic>? parameters;
+
+  AnalysisSuggestion({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.analysisType,
+    this.parameters,
+  });
+
+  factory AnalysisSuggestion.fromJson(Map<String, dynamic> json) {
+    return AnalysisSuggestion(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      description: json['description'] as String,
+      analysisType: json['analysis_type'] as String,
+      parameters: json['parameters'] as Map<String, dynamic>?,
+    );
+  }
 }
 
 /// AI Agent response
@@ -56,6 +90,7 @@ class AIAgentService {
   final LoggingService _loggingService;
   final SettingsController _settingsController;
   final GmailService _gmailService;
+  final VisualizationService _visualizationService;
 
   AIAgentService(
     this._db,
@@ -65,6 +100,7 @@ class AIAgentService {
     this._loggingService,
     this._settingsController,
     this._gmailService,
+    this._visualizationService,
   );
 
   /// Get available tools (functions) for OpenAI
@@ -483,6 +519,114 @@ class AIAgentService {
           },
         },
       },
+      {
+        'type': 'function',
+        'function': {
+          'name': 'suggest_analyses',
+          'description':
+              'Analyze the data structure and suggest possible visualizations and analyses that can be performed. Use this when the user asks "what analyses can I do", "what visualizations are possible", "show me analysis options", or similar questions about exploring the data.',
+          'parameters': {
+            'type': 'object',
+            'properties': {
+              'conversation_id': {
+                'type': 'string',
+                'description':
+                    'The ID of the conversation to suggest analyses for',
+              },
+            },
+            'required': ['conversation_id'],
+          },
+        },
+      },
+      {
+        'type': 'function',
+        'function': {
+          'name': 'generate_visualization',
+          'description':
+              'Generate a data visualization by creating and executing Python code. Use this when the user wants to see a chart, graph, or visualization of the data. IMPORTANT: If the user specifies chart details like "X-axis should be Time", "Y-axis should be Amount", "Expense and Revenue should be separate lines", you MUST extract these specifications and include them in the parameters. For trend analysis, data will be automatically aggregated by time period (summing values across categories like programs). If the user wants to see trends per program/category, set aggregate_by_program to false and include group_by parameter. The user can select from suggested analyses or request a specific type of visualization with custom specifications.',
+          'parameters': {
+            'type': 'object',
+            'properties': {
+              'conversation_id': {
+                'type': 'string',
+                'description':
+                    'The ID of the conversation to generate visualization for',
+              },
+              'analysis_type': {
+                'type': 'string',
+                'enum': [
+                  'trend',
+                  'distribution',
+                  'correlation',
+                  'summary',
+                  'custom',
+                ],
+                'description':
+                    'Type of analysis/visualization to generate. "trend" for time series, "distribution" for histograms, "correlation" for correlation matrix, "summary" for statistics, or "custom" for user-specified visualization.',
+              },
+              'title': {
+                'type': 'string',
+                'description':
+                    'Optional: Title for the visualization. If not provided, a default title will be generated.',
+              },
+              'parameters': {
+                'type': 'object',
+                'description':
+                    'Optional: Additional parameters for the visualization. Include: x_axis (column name for X-axis, e.g., "Month", "Time"), y_axis (column name(s) for Y-axis, can be array for multiple lines, e.g., ["Expense", "Revenue"]), lines (array of column names to plot as separate lines), group_by (column name to group by, e.g., "Program Name" for separate lines per program), aggregate_by_program (true to sum across all programs, false to show separate lines per program), title (chart title). By default, trend charts aggregate (sum) values across all programs by time period.',
+                'properties': {
+                  'x_axis': {
+                    'type': 'string',
+                    'description':
+                        'Column name for X-axis (e.g., "Month", "Time", "Date")',
+                  },
+                  'y_axis': {
+                    'oneOf': [
+                      {
+                        'type': 'string',
+                        'description': 'Single column name for Y-axis',
+                      },
+                      {
+                        'type': 'array',
+                        'items': {'type': 'string'},
+                        'description':
+                            'Array of column names for Y-axis (for multiple lines)',
+                      },
+                    ],
+                    'description':
+                        'Column name(s) for Y-axis. Can be a single string or array of strings for multiple lines (e.g., ["Expense", "Revenue"])',
+                  },
+                  'lines': {
+                    'type': 'array',
+                    'items': {'type': 'string'},
+                    'description':
+                        'Array of column names to plot as separate lines on the chart',
+                  },
+                  'group_by': {
+                    'type': 'string',
+                    'description':
+                        'Optional: Column name to group by (e.g., "Program Name" for separate lines per program). If not provided, data will be aggregated across all groups.',
+                  },
+                  'aggregate_by_program': {
+                    'type': 'boolean',
+                    'description':
+                        'Optional: If true, aggregate data across all programs. If false and group_by is detected, show separate lines per program. Defaults to false.',
+                  },
+                  'title': {
+                    'type': 'string',
+                    'description': 'Custom title for the chart',
+                  },
+                },
+              },
+              'save_analysis': {
+                'type': 'boolean',
+                'description':
+                    'Optional: Whether to save this analysis for later reuse. Defaults to true.',
+              },
+            },
+            'required': ['conversation_id', 'analysis_type'],
+          },
+        },
+      },
     ];
   }
 
@@ -707,13 +851,70 @@ IMPORTANT: For new conversations without previous requests, you need to ask the 
         // Check if any function failed
         final hasFailures = functionResults.any((r) => r['success'] == false);
 
+        // Check for visualization results
+        final visualizationResults =
+            functionResults
+                .where(
+                  (r) => r['success'] == true && r.containsKey('image_base64'),
+                )
+                .toList();
+
         // For analyze_sheet_data, provide additional context to help LLM analyze
         final analyzeResults =
             functionResults
                 .where((r) => r['success'] == true && r.containsKey('data'))
                 .toList();
 
-        if (analyzeResults.isNotEmpty) {
+        if (visualizationResults.isNotEmpty) {
+          // Handle visualization results - tell LLM not to include image markdown
+          final vizResult = visualizationResults.first;
+          final description =
+              vizResult['description'] as String? ?? 'the visualization';
+
+          // Extract parameters from tool call arguments
+          Map<String, dynamic>? params;
+          if (toolCalls.isNotEmpty) {
+            try {
+              final args = toolCalls[0]['function']['arguments'] as String?;
+              if (args != null) {
+                final decoded = jsonDecode(args) as Map<String, dynamic>;
+                params = decoded['parameters'] as Map<String, dynamic>?;
+              }
+            } catch (e) {
+              // Ignore parse errors
+            }
+          }
+
+          final xAxis = params?['x_axis'] as String?;
+          final yAxis = params?['y_axis'];
+
+          String paramInfo = '';
+          if (xAxis != null || yAxis != null) {
+            paramInfo = ' The chart uses ';
+            if (xAxis != null) paramInfo += 'X-axis: $xAxis';
+            if (xAxis != null && yAxis != null) paramInfo += ', ';
+            if (yAxis != null) {
+              if (yAxis is List) {
+                paramInfo += 'Y-axis: ${yAxis.join(", ")}';
+              } else {
+                paramInfo += 'Y-axis: $yAxis';
+              }
+            }
+            paramInfo += '.';
+          }
+
+          messages.add({
+            'role': 'user',
+            'content':
+                'A visualization has been successfully generated: "$description".$paramInfo '
+                'The image data has been extracted and will be displayed separately. '
+                'Simply confirm to the user that the visualization has been generated and is shown above. '
+                'If the user requested specific chart specifications (like X-axis, Y-axis, separate lines), '
+                'acknowledge that those have been applied.$paramInfo '
+                'DO NOT include any markdown image syntax like ![alt](...) in your response. '
+                'Just provide a brief message confirming the visualization is ready.',
+          });
+        } else if (analyzeResults.isNotEmpty) {
           // Add context for data analysis
           final dataContext = analyzeResults
               .map((r) {
@@ -776,17 +977,52 @@ IMPORTANT: For new conversations without previous requests, you need to ask the 
 
         final finalData =
             jsonDecode(finalResponse.body) as Map<String, dynamic>;
-        final finalContent =
-            finalData['choices']?[0]?['message']?['content'] as String?;
+        String finalContent =
+            finalData['choices']?[0]?['message']?['content'] as String? ?? '';
+
+        // If we have visualization results, clean any image markdown from response
+        if (visualizationResults.isNotEmpty && finalContent.isNotEmpty) {
+          // Clean any remaining image markdown syntax (including incomplete ones)
+          finalContent = finalContent.replaceAll(
+            RegExp(r'!\[.*?\]\([^)]*\)?', dotAll: true),
+            '',
+          );
+          // Remove lines that are just incomplete image syntax
+          finalContent = finalContent
+              .split('\n')
+              .where((line) => !RegExp(r'^!\[.*?\]\(').hasMatch(line.trim()))
+              .join('\n');
+          finalContent = finalContent.trim();
+
+          // If content is now empty or minimal, provide a better message
+          if (finalContent.isEmpty ||
+              finalContent.toLowerCase().contains('chart') ||
+              finalContent.toLowerCase().contains('visualization')) {
+            final description =
+                visualizationResults.first['description'] as String? ??
+                'the visualization';
+            finalContent =
+                'Visualization generated successfully! The chart showing "$description" is displayed above.';
+          }
+        }
+
+        // Find the most relevant result to return (prioritize visualization results)
+        Map<String, dynamic>? resultToReturn;
+        if (visualizationResults.isNotEmpty) {
+          resultToReturn = visualizationResults.first;
+        } else if (functionResults.isNotEmpty) {
+          resultToReturn = functionResults.first;
+        }
 
         return AIAgentResponse(
           message:
-              finalContent ??
-              (hasFailures
-                  ? 'I encountered an error while processing your request. Please try again or check the conversation selection.'
-                  : 'Action completed successfully.'),
+              finalContent.isNotEmpty
+                  ? finalContent
+                  : (hasFailures
+                      ? 'I encountered an error while processing your request. Please try again or check the conversation selection.'
+                      : 'Action completed successfully.'),
           isAction: true,
-          actionResult: functionResults.isNotEmpty ? functionResults[0] : null,
+          actionResult: resultToReturn,
         );
       }
 
@@ -873,6 +1109,12 @@ IMPORTANT: For new conversations without previous requests, you need to ask the 
             break;
           case 'save_parsed_data':
             result = await _executeSaveParsedData(arguments);
+            break;
+          case 'suggest_analyses':
+            result = await _executeSuggestAnalyses(arguments);
+            break;
+          case 'generate_visualization':
+            result = await _executeGenerateVisualization(arguments);
             break;
           default:
             result = {
@@ -2390,6 +2632,314 @@ Return the JSON now:''';
 
     return uniqueStatuses.values.toList();
   }
+
+  /// Execute suggest_analyses tool
+  Future<Map<String, dynamic>> _executeSuggestAnalyses(
+    Map<String, dynamic> arguments,
+  ) async {
+    try {
+      final conversationId = arguments['conversation_id'] as String?;
+      if (conversationId == null) {
+        return {'success': false, 'error': 'conversation_id is required'};
+      }
+
+      // Get sheet data to analyze structure
+      final conversations = await _db.getConversations(includeArchived: true);
+      final conversation = conversations.firstWhere(
+        (c) => c.id == conversationId,
+        orElse: () => throw Exception('Conversation not found'),
+      );
+
+      if (conversation.sheetId.isEmpty) {
+        return {
+          'success': false,
+          'error': 'No sheet associated with conversation',
+        };
+      }
+
+      final sheetData = await _sheetsService.readResponsesData(
+        conversation.sheetId,
+      );
+      if (sheetData.isEmpty) {
+        return {
+          'success': false,
+          'error': 'Sheet is empty. No data to analyze.',
+        };
+      }
+
+      final headers = sheetData[0];
+      final dataHeaders = headers.where((h) => !h.startsWith('__')).toList();
+
+      // Get OpenAI to suggest analyses based on data structure
+      final openAiKey = await _settingsController.getOpenAiKey();
+      if (openAiKey == null || openAiKey.isEmpty) {
+        return {'success': false, 'error': 'OpenAI API key not configured'};
+      }
+
+      final prompt =
+          '''Based on the following data structure, suggest 3-5 specific visualizations and analyses that would be valuable:
+
+Columns: ${dataHeaders.join(', ')}
+Total rows: ${sheetData.length - 1}
+
+Return a JSON array of analysis suggestions, each with:
+- id: unique identifier (e.g., "trend_analysis", "distribution_chart")
+- title: user-friendly name
+- description: what it shows
+- analysis_type: one of ["trend", "distribution", "correlation", "summary", "custom"]
+- parameters: optional object with column names or other parameters
+
+Example:
+[
+  {
+    "id": "revenue_expense_trend",
+    "title": "Revenue and Expense Trends Over Time",
+    "description": "Shows aggregated revenue and expenses by month (summed across all programs)",
+    "analysis_type": "trend",
+    "parameters": {"x_axis": "Month", "y_axis": ["Revenue", "Expenses"], "aggregate_by_program": true}
+  },
+  {
+    "id": "revenue_by_program",
+    "title": "Revenue Trends by Program",
+    "description": "Shows revenue trend separately for each program",
+    "analysis_type": "trend",
+    "parameters": {"x_axis": "Month", "y_axis": "Revenue", "group_by": "Program Name", "aggregate_by_program": false}
+  }
+]
+
+IMPORTANT: For trend analysis, by default aggregate data by time period (set aggregate_by_program: true) unless the user explicitly wants to see trends per program/category.
+
+Return ONLY valid JSON, no markdown, no explanations.''';
+
+      final response = await http.post(
+        Uri.parse('https://api.openai.com/v1/chat/completions'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $openAiKey',
+        },
+        body: jsonEncode({
+          'model': 'gpt-4o-mini',
+          'messages': [
+            {
+              'role': 'system',
+              'content':
+                  'You are a data analysis assistant. Return only valid JSON arrays.',
+            },
+            {'role': 'user', 'content': prompt},
+          ],
+          'temperature': 0.7,
+          'max_tokens': 1000,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        return {'success': false, 'error': 'Failed to get suggestions from AI'};
+      }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final content = data['choices']?[0]?['message']?['content'] as String?;
+
+      if (content == null) {
+        return {'success': false, 'error': 'No suggestions returned'};
+      }
+
+      // Parse JSON from response
+      String cleanedContent = content.trim();
+      if (cleanedContent.startsWith('```')) {
+        final lines = cleanedContent.split('\n');
+        cleanedContent = lines.skip(1).take(lines.length - 2).join('\n').trim();
+      }
+
+      final suggestions = jsonDecode(cleanedContent) as List<dynamic>;
+
+      return {
+        'success': true,
+        'suggestions': suggestions,
+        'conversation_id': conversationId,
+      };
+    } catch (e) {
+      return {'success': false, 'error': 'Error suggesting analyses: $e'};
+    }
+  }
+
+  /// Execute generate_visualization tool
+  Future<Map<String, dynamic>> _executeGenerateVisualization(
+    Map<String, dynamic> arguments,
+  ) async {
+    try {
+      final conversationId = arguments['conversation_id'] as String?;
+      if (conversationId == null) {
+        return {'success': false, 'error': 'conversation_id is required'};
+      }
+
+      final analysisType = arguments['analysis_type'] as String? ?? 'custom';
+      final title = arguments['title'] as String?;
+      final parameters = arguments['parameters'] as Map<String, dynamic>?;
+      final saveAnalysis = arguments['save_analysis'] as bool? ?? true;
+
+      // Get sheet data
+      final conversations = await _db.getConversations(includeArchived: true);
+      final conversation = conversations.firstWhere(
+        (c) => c.id == conversationId,
+        orElse: () => throw Exception('Conversation not found'),
+      );
+
+      if (conversation.sheetId.isEmpty) {
+        return {
+          'success': false,
+          'error': 'No sheet associated with conversation',
+        };
+      }
+
+      final sheetData = await _sheetsService.readResponsesData(
+        conversation.sheetId,
+      );
+      if (sheetData.isEmpty) {
+        return {
+          'success': false,
+          'error': 'Sheet is empty. No data to visualize.',
+        };
+      }
+
+      final headers = sheetData[0];
+      final dataHeaders = headers.where((h) => !h.startsWith('__')).toList();
+
+      // Generate Python code
+      final pythonCode = await _visualizationService.generatePythonCode(
+        analysisType: analysisType,
+        headers: dataHeaders,
+        parameters: parameters,
+      );
+
+      // Generate visualization
+      final result = await _visualizationService.generateVisualization(
+        pythonCode: pythonCode,
+        sheetData: sheetData,
+        headers: headers,
+        description: title ?? 'Data Visualization',
+      );
+
+      if (!result.success) {
+        return {'success': false, 'error': result.error};
+      }
+
+      // Convert image to base64 for storage/transmission
+      final imageBase64 =
+          result.imageData != null ? base64Encode(result.imageData!) : null;
+
+      // Save analysis if requested
+      String? savedAnalysisId;
+      if (saveAnalysis && result.pythonCode != null) {
+        savedAnalysisId = generateId();
+        await _db.saveAnalysis(
+          id: savedAnalysisId,
+          conversationId: conversationId,
+          title:
+              title ??
+              'Visualization ${DateTime.now().toString().substring(0, 16)}',
+          pythonCode: result.pythonCode!,
+          analysisType: analysisType,
+          parametersJson: parameters != null ? jsonEncode(parameters) : null,
+        );
+      }
+
+      return {
+        'success': true,
+        'image_base64': imageBase64,
+        'python_code': result.pythonCode,
+        'description': result.description,
+        'saved_analysis_id': savedAnalysisId,
+        'message': 'Visualization generated successfully!',
+      };
+    } catch (e) {
+      return {'success': false, 'error': 'Error generating visualization: $e'};
+    }
+  }
+
+  /// Generate visualization directly (public method for UI components)
+  Future<Map<String, dynamic>> generateVisualizationDirect({
+    required String conversationId,
+    required String analysisType,
+    String? title,
+    Map<String, dynamic>? parameters,
+    bool saveAnalysis = true,
+  }) async {
+    return await _executeGenerateVisualization({
+      'conversation_id': conversationId,
+      'analysis_type': analysisType,
+      'title': title,
+      'parameters': parameters,
+      'save_analysis': saveAnalysis,
+    });
+  }
+
+  /// Run a saved analysis
+  Future<Map<String, dynamic>> runSavedAnalysis({
+    required String analysisId,
+    required String conversationId,
+  }) async {
+    try {
+      // Get saved analysis
+      final savedAnalysis = await _db.getSavedAnalysis(analysisId);
+      if (savedAnalysis == null) {
+        return {'success': false, 'error': 'Saved analysis not found'};
+      }
+
+      // Get sheet data
+      final conversations = await _db.getConversations(includeArchived: true);
+      final conversation = conversations.firstWhere(
+        (c) => c.id == conversationId,
+        orElse: () => throw Exception('Conversation not found'),
+      );
+
+      if (conversation.sheetId.isEmpty) {
+        return {
+          'success': false,
+          'error': 'No sheet associated with conversation',
+        };
+      }
+
+      final sheetData = await _sheetsService.readResponsesData(
+        conversation.sheetId,
+      );
+      if (sheetData.isEmpty) {
+        return {
+          'success': false,
+          'error': 'Sheet is empty. No data to visualize.',
+        };
+      }
+
+      final headers = sheetData[0];
+
+      // Generate visualization using saved code
+      // Note: Parameters are already embedded in the saved Python code
+      final result = await _visualizationService.generateVisualization(
+        pythonCode: savedAnalysis.pythonCode,
+        sheetData: sheetData,
+        headers: headers,
+        description: savedAnalysis.title,
+      );
+
+      if (!result.success) {
+        return {'success': false, 'error': result.error};
+      }
+
+      // Convert image to base64
+      final imageBase64 =
+          result.imageData != null ? base64Encode(result.imageData!) : null;
+
+      return {
+        'success': true,
+        'image_base64': imageBase64,
+        'python_code': result.pythonCode,
+        'description': result.description ?? savedAnalysis.title,
+        'saved_analysis_id': analysisId,
+        'message': 'Visualization generated successfully!',
+      };
+    } catch (e) {
+      return {'success': false, 'error': 'Error running saved analysis: $e'};
+    }
+  }
 }
 
 /// Provider for AI Agent Service
@@ -2407,6 +2957,7 @@ final aiAgentServiceProvider = Provider<AIAgentService>((ref) {
     loggingService,
   );
   final settingsController = SettingsController(db);
+  final visualizationService = ref.read(visualizationServiceProvider);
 
   return AIAgentService(
     db,
@@ -2416,5 +2967,6 @@ final aiAgentServiceProvider = Provider<AIAgentService>((ref) {
     loggingService,
     settingsController,
     gmailService,
+    visualizationService,
   );
 });

@@ -1289,15 +1289,15 @@ const int _conversationsPageSize = 50;
 
 /// Provider for conversations list with pagination
 /// Loads initial batch of conversations
-final conversationsProvider =
-    FutureProvider<List<models.Conversation>>((ref) async {
+final conversationsProvider = FutureProvider<List<models.Conversation>>((
+  ref,
+) async {
   final db = ref.read(appDatabaseProvider);
   return await db.getConversations(limit: _conversationsPageSize);
 });
 
 /// Provider for total conversation count
-final conversationCountProvider =
-    FutureProvider<int>((ref) async {
+final conversationCountProvider = FutureProvider<int>((ref) async {
   final db = ref.read(appDatabaseProvider);
   return await db.countConversations();
 });

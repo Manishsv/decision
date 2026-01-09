@@ -2847,6 +2847,28 @@ class $AIChatMessagesTable extends AIChatMessages
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _imageBase64Meta = const VerificationMeta(
+    'imageBase64',
+  );
+  @override
+  late final GeneratedColumn<String> imageBase64 = GeneratedColumn<String>(
+    'image_base64',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _suggestionsJsonMeta = const VerificationMeta(
+    'suggestionsJson',
+  );
+  @override
+  late final GeneratedColumn<String> suggestionsJson = GeneratedColumn<String>(
+    'suggestions_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _timestampMeta = const VerificationMeta(
     'timestamp',
   );
@@ -2865,6 +2887,8 @@ class $AIChatMessagesTable extends AIChatMessages
     conversationId,
     role,
     content,
+    imageBase64,
+    suggestionsJson,
     timestamp,
   ];
   @override
@@ -2911,6 +2935,24 @@ class $AIChatMessagesTable extends AIChatMessages
     } else if (isInserting) {
       context.missing(_contentMeta);
     }
+    if (data.containsKey('image_base64')) {
+      context.handle(
+        _imageBase64Meta,
+        imageBase64.isAcceptableOrUnknown(
+          data['image_base64']!,
+          _imageBase64Meta,
+        ),
+      );
+    }
+    if (data.containsKey('suggestions_json')) {
+      context.handle(
+        _suggestionsJsonMeta,
+        suggestionsJson.isAcceptableOrUnknown(
+          data['suggestions_json']!,
+          _suggestionsJsonMeta,
+        ),
+      );
+    }
     if (data.containsKey('timestamp')) {
       context.handle(
         _timestampMeta,
@@ -2946,6 +2988,14 @@ class $AIChatMessagesTable extends AIChatMessages
             DriftSqlType.string,
             data['${effectivePrefix}content'],
           )!,
+      imageBase64: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}image_base64'],
+      ),
+      suggestionsJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}suggestions_json'],
+      ),
       timestamp:
           attachedDatabase.typeMapping.read(
             DriftSqlType.dateTime,
@@ -2965,12 +3015,16 @@ class AIChatMessage extends DataClass implements Insertable<AIChatMessage> {
   final String conversationId;
   final String role;
   final String content;
+  final String? imageBase64;
+  final String? suggestionsJson;
   final DateTime timestamp;
   const AIChatMessage({
     required this.id,
     required this.conversationId,
     required this.role,
     required this.content,
+    this.imageBase64,
+    this.suggestionsJson,
     required this.timestamp,
   });
   @override
@@ -2980,6 +3034,12 @@ class AIChatMessage extends DataClass implements Insertable<AIChatMessage> {
     map['conversation_id'] = Variable<String>(conversationId);
     map['role'] = Variable<String>(role);
     map['content'] = Variable<String>(content);
+    if (!nullToAbsent || imageBase64 != null) {
+      map['image_base64'] = Variable<String>(imageBase64);
+    }
+    if (!nullToAbsent || suggestionsJson != null) {
+      map['suggestions_json'] = Variable<String>(suggestionsJson);
+    }
     map['timestamp'] = Variable<DateTime>(timestamp);
     return map;
   }
@@ -2990,6 +3050,14 @@ class AIChatMessage extends DataClass implements Insertable<AIChatMessage> {
       conversationId: Value(conversationId),
       role: Value(role),
       content: Value(content),
+      imageBase64:
+          imageBase64 == null && nullToAbsent
+              ? const Value.absent()
+              : Value(imageBase64),
+      suggestionsJson:
+          suggestionsJson == null && nullToAbsent
+              ? const Value.absent()
+              : Value(suggestionsJson),
       timestamp: Value(timestamp),
     );
   }
@@ -3004,6 +3072,8 @@ class AIChatMessage extends DataClass implements Insertable<AIChatMessage> {
       conversationId: serializer.fromJson<String>(json['conversationId']),
       role: serializer.fromJson<String>(json['role']),
       content: serializer.fromJson<String>(json['content']),
+      imageBase64: serializer.fromJson<String?>(json['imageBase64']),
+      suggestionsJson: serializer.fromJson<String?>(json['suggestionsJson']),
       timestamp: serializer.fromJson<DateTime>(json['timestamp']),
     );
   }
@@ -3015,6 +3085,8 @@ class AIChatMessage extends DataClass implements Insertable<AIChatMessage> {
       'conversationId': serializer.toJson<String>(conversationId),
       'role': serializer.toJson<String>(role),
       'content': serializer.toJson<String>(content),
+      'imageBase64': serializer.toJson<String?>(imageBase64),
+      'suggestionsJson': serializer.toJson<String?>(suggestionsJson),
       'timestamp': serializer.toJson<DateTime>(timestamp),
     };
   }
@@ -3024,12 +3096,17 @@ class AIChatMessage extends DataClass implements Insertable<AIChatMessage> {
     String? conversationId,
     String? role,
     String? content,
+    Value<String?> imageBase64 = const Value.absent(),
+    Value<String?> suggestionsJson = const Value.absent(),
     DateTime? timestamp,
   }) => AIChatMessage(
     id: id ?? this.id,
     conversationId: conversationId ?? this.conversationId,
     role: role ?? this.role,
     content: content ?? this.content,
+    imageBase64: imageBase64.present ? imageBase64.value : this.imageBase64,
+    suggestionsJson:
+        suggestionsJson.present ? suggestionsJson.value : this.suggestionsJson,
     timestamp: timestamp ?? this.timestamp,
   );
   AIChatMessage copyWithCompanion(AIChatMessagesCompanion data) {
@@ -3041,6 +3118,12 @@ class AIChatMessage extends DataClass implements Insertable<AIChatMessage> {
               : this.conversationId,
       role: data.role.present ? data.role.value : this.role,
       content: data.content.present ? data.content.value : this.content,
+      imageBase64:
+          data.imageBase64.present ? data.imageBase64.value : this.imageBase64,
+      suggestionsJson:
+          data.suggestionsJson.present
+              ? data.suggestionsJson.value
+              : this.suggestionsJson,
       timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
     );
   }
@@ -3052,13 +3135,23 @@ class AIChatMessage extends DataClass implements Insertable<AIChatMessage> {
           ..write('conversationId: $conversationId, ')
           ..write('role: $role, ')
           ..write('content: $content, ')
+          ..write('imageBase64: $imageBase64, ')
+          ..write('suggestionsJson: $suggestionsJson, ')
           ..write('timestamp: $timestamp')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, conversationId, role, content, timestamp);
+  int get hashCode => Object.hash(
+    id,
+    conversationId,
+    role,
+    content,
+    imageBase64,
+    suggestionsJson,
+    timestamp,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3067,6 +3160,8 @@ class AIChatMessage extends DataClass implements Insertable<AIChatMessage> {
           other.conversationId == this.conversationId &&
           other.role == this.role &&
           other.content == this.content &&
+          other.imageBase64 == this.imageBase64 &&
+          other.suggestionsJson == this.suggestionsJson &&
           other.timestamp == this.timestamp);
 }
 
@@ -3075,6 +3170,8 @@ class AIChatMessagesCompanion extends UpdateCompanion<AIChatMessage> {
   final Value<String> conversationId;
   final Value<String> role;
   final Value<String> content;
+  final Value<String?> imageBase64;
+  final Value<String?> suggestionsJson;
   final Value<DateTime> timestamp;
   final Value<int> rowid;
   const AIChatMessagesCompanion({
@@ -3082,6 +3179,8 @@ class AIChatMessagesCompanion extends UpdateCompanion<AIChatMessage> {
     this.conversationId = const Value.absent(),
     this.role = const Value.absent(),
     this.content = const Value.absent(),
+    this.imageBase64 = const Value.absent(),
+    this.suggestionsJson = const Value.absent(),
     this.timestamp = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -3090,6 +3189,8 @@ class AIChatMessagesCompanion extends UpdateCompanion<AIChatMessage> {
     required String conversationId,
     required String role,
     required String content,
+    this.imageBase64 = const Value.absent(),
+    this.suggestionsJson = const Value.absent(),
     this.timestamp = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -3101,6 +3202,8 @@ class AIChatMessagesCompanion extends UpdateCompanion<AIChatMessage> {
     Expression<String>? conversationId,
     Expression<String>? role,
     Expression<String>? content,
+    Expression<String>? imageBase64,
+    Expression<String>? suggestionsJson,
     Expression<DateTime>? timestamp,
     Expression<int>? rowid,
   }) {
@@ -3109,6 +3212,8 @@ class AIChatMessagesCompanion extends UpdateCompanion<AIChatMessage> {
       if (conversationId != null) 'conversation_id': conversationId,
       if (role != null) 'role': role,
       if (content != null) 'content': content,
+      if (imageBase64 != null) 'image_base64': imageBase64,
+      if (suggestionsJson != null) 'suggestions_json': suggestionsJson,
       if (timestamp != null) 'timestamp': timestamp,
       if (rowid != null) 'rowid': rowid,
     });
@@ -3119,6 +3224,8 @@ class AIChatMessagesCompanion extends UpdateCompanion<AIChatMessage> {
     Value<String>? conversationId,
     Value<String>? role,
     Value<String>? content,
+    Value<String?>? imageBase64,
+    Value<String?>? suggestionsJson,
     Value<DateTime>? timestamp,
     Value<int>? rowid,
   }) {
@@ -3127,6 +3234,8 @@ class AIChatMessagesCompanion extends UpdateCompanion<AIChatMessage> {
       conversationId: conversationId ?? this.conversationId,
       role: role ?? this.role,
       content: content ?? this.content,
+      imageBase64: imageBase64 ?? this.imageBase64,
+      suggestionsJson: suggestionsJson ?? this.suggestionsJson,
       timestamp: timestamp ?? this.timestamp,
       rowid: rowid ?? this.rowid,
     );
@@ -3147,6 +3256,12 @@ class AIChatMessagesCompanion extends UpdateCompanion<AIChatMessage> {
     if (content.present) {
       map['content'] = Variable<String>(content.value);
     }
+    if (imageBase64.present) {
+      map['image_base64'] = Variable<String>(imageBase64.value);
+    }
+    if (suggestionsJson.present) {
+      map['suggestions_json'] = Variable<String>(suggestionsJson.value);
+    }
     if (timestamp.present) {
       map['timestamp'] = Variable<DateTime>(timestamp.value);
     }
@@ -3163,7 +3278,497 @@ class AIChatMessagesCompanion extends UpdateCompanion<AIChatMessage> {
           ..write('conversationId: $conversationId, ')
           ..write('role: $role, ')
           ..write('content: $content, ')
+          ..write('imageBase64: $imageBase64, ')
+          ..write('suggestionsJson: $suggestionsJson, ')
           ..write('timestamp: $timestamp, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SavedAnalysesTable extends SavedAnalyses
+    with TableInfo<$SavedAnalysesTable, SavedAnalyse> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SavedAnalysesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _conversationIdMeta = const VerificationMeta(
+    'conversationId',
+  );
+  @override
+  late final GeneratedColumn<String> conversationId = GeneratedColumn<String>(
+    'conversation_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _pythonCodeMeta = const VerificationMeta(
+    'pythonCode',
+  );
+  @override
+  late final GeneratedColumn<String> pythonCode = GeneratedColumn<String>(
+    'python_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _analysisTypeMeta = const VerificationMeta(
+    'analysisType',
+  );
+  @override
+  late final GeneratedColumn<String> analysisType = GeneratedColumn<String>(
+    'analysis_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _parametersJsonMeta = const VerificationMeta(
+    'parametersJson',
+  );
+  @override
+  late final GeneratedColumn<String> parametersJson = GeneratedColumn<String>(
+    'parameters_json',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    conversationId,
+    title,
+    pythonCode,
+    analysisType,
+    parametersJson,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'saved_analyses';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SavedAnalyse> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('conversation_id')) {
+      context.handle(
+        _conversationIdMeta,
+        conversationId.isAcceptableOrUnknown(
+          data['conversation_id']!,
+          _conversationIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_conversationIdMeta);
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('python_code')) {
+      context.handle(
+        _pythonCodeMeta,
+        pythonCode.isAcceptableOrUnknown(data['python_code']!, _pythonCodeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_pythonCodeMeta);
+    }
+    if (data.containsKey('analysis_type')) {
+      context.handle(
+        _analysisTypeMeta,
+        analysisType.isAcceptableOrUnknown(
+          data['analysis_type']!,
+          _analysisTypeMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_analysisTypeMeta);
+    }
+    if (data.containsKey('parameters_json')) {
+      context.handle(
+        _parametersJsonMeta,
+        parametersJson.isAcceptableOrUnknown(
+          data['parameters_json']!,
+          _parametersJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  SavedAnalyse map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SavedAnalyse(
+      id:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}id'],
+          )!,
+      conversationId:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}conversation_id'],
+          )!,
+      title:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}title'],
+          )!,
+      pythonCode:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}python_code'],
+          )!,
+      analysisType:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.string,
+            data['${effectivePrefix}analysis_type'],
+          )!,
+      parametersJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}parameters_json'],
+      ),
+      createdAt:
+          attachedDatabase.typeMapping.read(
+            DriftSqlType.dateTime,
+            data['${effectivePrefix}created_at'],
+          )!,
+    );
+  }
+
+  @override
+  $SavedAnalysesTable createAlias(String alias) {
+    return $SavedAnalysesTable(attachedDatabase, alias);
+  }
+}
+
+class SavedAnalyse extends DataClass implements Insertable<SavedAnalyse> {
+  final String id;
+  final String conversationId;
+  final String title;
+  final String pythonCode;
+  final String analysisType;
+  final String? parametersJson;
+  final DateTime createdAt;
+  const SavedAnalyse({
+    required this.id,
+    required this.conversationId,
+    required this.title,
+    required this.pythonCode,
+    required this.analysisType,
+    this.parametersJson,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['conversation_id'] = Variable<String>(conversationId);
+    map['title'] = Variable<String>(title);
+    map['python_code'] = Variable<String>(pythonCode);
+    map['analysis_type'] = Variable<String>(analysisType);
+    if (!nullToAbsent || parametersJson != null) {
+      map['parameters_json'] = Variable<String>(parametersJson);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  SavedAnalysesCompanion toCompanion(bool nullToAbsent) {
+    return SavedAnalysesCompanion(
+      id: Value(id),
+      conversationId: Value(conversationId),
+      title: Value(title),
+      pythonCode: Value(pythonCode),
+      analysisType: Value(analysisType),
+      parametersJson:
+          parametersJson == null && nullToAbsent
+              ? const Value.absent()
+              : Value(parametersJson),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory SavedAnalyse.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SavedAnalyse(
+      id: serializer.fromJson<String>(json['id']),
+      conversationId: serializer.fromJson<String>(json['conversationId']),
+      title: serializer.fromJson<String>(json['title']),
+      pythonCode: serializer.fromJson<String>(json['pythonCode']),
+      analysisType: serializer.fromJson<String>(json['analysisType']),
+      parametersJson: serializer.fromJson<String?>(json['parametersJson']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'conversationId': serializer.toJson<String>(conversationId),
+      'title': serializer.toJson<String>(title),
+      'pythonCode': serializer.toJson<String>(pythonCode),
+      'analysisType': serializer.toJson<String>(analysisType),
+      'parametersJson': serializer.toJson<String?>(parametersJson),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  SavedAnalyse copyWith({
+    String? id,
+    String? conversationId,
+    String? title,
+    String? pythonCode,
+    String? analysisType,
+    Value<String?> parametersJson = const Value.absent(),
+    DateTime? createdAt,
+  }) => SavedAnalyse(
+    id: id ?? this.id,
+    conversationId: conversationId ?? this.conversationId,
+    title: title ?? this.title,
+    pythonCode: pythonCode ?? this.pythonCode,
+    analysisType: analysisType ?? this.analysisType,
+    parametersJson:
+        parametersJson.present ? parametersJson.value : this.parametersJson,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  SavedAnalyse copyWithCompanion(SavedAnalysesCompanion data) {
+    return SavedAnalyse(
+      id: data.id.present ? data.id.value : this.id,
+      conversationId:
+          data.conversationId.present
+              ? data.conversationId.value
+              : this.conversationId,
+      title: data.title.present ? data.title.value : this.title,
+      pythonCode:
+          data.pythonCode.present ? data.pythonCode.value : this.pythonCode,
+      analysisType:
+          data.analysisType.present
+              ? data.analysisType.value
+              : this.analysisType,
+      parametersJson:
+          data.parametersJson.present
+              ? data.parametersJson.value
+              : this.parametersJson,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SavedAnalyse(')
+          ..write('id: $id, ')
+          ..write('conversationId: $conversationId, ')
+          ..write('title: $title, ')
+          ..write('pythonCode: $pythonCode, ')
+          ..write('analysisType: $analysisType, ')
+          ..write('parametersJson: $parametersJson, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    conversationId,
+    title,
+    pythonCode,
+    analysisType,
+    parametersJson,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SavedAnalyse &&
+          other.id == this.id &&
+          other.conversationId == this.conversationId &&
+          other.title == this.title &&
+          other.pythonCode == this.pythonCode &&
+          other.analysisType == this.analysisType &&
+          other.parametersJson == this.parametersJson &&
+          other.createdAt == this.createdAt);
+}
+
+class SavedAnalysesCompanion extends UpdateCompanion<SavedAnalyse> {
+  final Value<String> id;
+  final Value<String> conversationId;
+  final Value<String> title;
+  final Value<String> pythonCode;
+  final Value<String> analysisType;
+  final Value<String?> parametersJson;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const SavedAnalysesCompanion({
+    this.id = const Value.absent(),
+    this.conversationId = const Value.absent(),
+    this.title = const Value.absent(),
+    this.pythonCode = const Value.absent(),
+    this.analysisType = const Value.absent(),
+    this.parametersJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SavedAnalysesCompanion.insert({
+    required String id,
+    required String conversationId,
+    required String title,
+    required String pythonCode,
+    required String analysisType,
+    this.parametersJson = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       conversationId = Value(conversationId),
+       title = Value(title),
+       pythonCode = Value(pythonCode),
+       analysisType = Value(analysisType);
+  static Insertable<SavedAnalyse> custom({
+    Expression<String>? id,
+    Expression<String>? conversationId,
+    Expression<String>? title,
+    Expression<String>? pythonCode,
+    Expression<String>? analysisType,
+    Expression<String>? parametersJson,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (conversationId != null) 'conversation_id': conversationId,
+      if (title != null) 'title': title,
+      if (pythonCode != null) 'python_code': pythonCode,
+      if (analysisType != null) 'analysis_type': analysisType,
+      if (parametersJson != null) 'parameters_json': parametersJson,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SavedAnalysesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? conversationId,
+    Value<String>? title,
+    Value<String>? pythonCode,
+    Value<String>? analysisType,
+    Value<String?>? parametersJson,
+    Value<DateTime>? createdAt,
+    Value<int>? rowid,
+  }) {
+    return SavedAnalysesCompanion(
+      id: id ?? this.id,
+      conversationId: conversationId ?? this.conversationId,
+      title: title ?? this.title,
+      pythonCode: pythonCode ?? this.pythonCode,
+      analysisType: analysisType ?? this.analysisType,
+      parametersJson: parametersJson ?? this.parametersJson,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (conversationId.present) {
+      map['conversation_id'] = Variable<String>(conversationId.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (pythonCode.present) {
+      map['python_code'] = Variable<String>(pythonCode.value);
+    }
+    if (analysisType.present) {
+      map['analysis_type'] = Variable<String>(analysisType.value);
+    }
+    if (parametersJson.present) {
+      map['parameters_json'] = Variable<String>(parametersJson.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SavedAnalysesCompanion(')
+          ..write('id: $id, ')
+          ..write('conversationId: $conversationId, ')
+          ..write('title: $title, ')
+          ..write('pythonCode: $pythonCode, ')
+          ..write('analysisType: $analysisType, ')
+          ..write('parametersJson: $parametersJson, ')
+          ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3182,6 +3787,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $ProcessedMessagesTable(this);
   late final $CredentialsTable credentials = $CredentialsTable(this);
   late final $AIChatMessagesTable aIChatMessages = $AIChatMessagesTable(this);
+  late final $SavedAnalysesTable savedAnalyses = $SavedAnalysesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3194,6 +3800,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     processedMessages,
     credentials,
     aIChatMessages,
+    savedAnalyses,
   ];
 }
 
@@ -4705,6 +5312,8 @@ typedef $$AIChatMessagesTableCreateCompanionBuilder =
       required String conversationId,
       required String role,
       required String content,
+      Value<String?> imageBase64,
+      Value<String?> suggestionsJson,
       Value<DateTime> timestamp,
       Value<int> rowid,
     });
@@ -4714,6 +5323,8 @@ typedef $$AIChatMessagesTableUpdateCompanionBuilder =
       Value<String> conversationId,
       Value<String> role,
       Value<String> content,
+      Value<String?> imageBase64,
+      Value<String?> suggestionsJson,
       Value<DateTime> timestamp,
       Value<int> rowid,
     });
@@ -4744,6 +5355,16 @@ class $$AIChatMessagesTableFilterComposer
 
   ColumnFilters<String> get content => $composableBuilder(
     column: $table.content,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get imageBase64 => $composableBuilder(
+    column: $table.imageBase64,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get suggestionsJson => $composableBuilder(
+    column: $table.suggestionsJson,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4782,6 +5403,16 @@ class $$AIChatMessagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get imageBase64 => $composableBuilder(
+    column: $table.imageBase64,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get suggestionsJson => $composableBuilder(
+    column: $table.suggestionsJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get timestamp => $composableBuilder(
     column: $table.timestamp,
     builder: (column) => ColumnOrderings(column),
@@ -4810,6 +5441,16 @@ class $$AIChatMessagesTableAnnotationComposer
 
   GeneratedColumn<String> get content =>
       $composableBuilder(column: $table.content, builder: (column) => column);
+
+  GeneratedColumn<String> get imageBase64 => $composableBuilder(
+    column: $table.imageBase64,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get suggestionsJson => $composableBuilder(
+    column: $table.suggestionsJson,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get timestamp =>
       $composableBuilder(column: $table.timestamp, builder: (column) => column);
@@ -4856,6 +5497,8 @@ class $$AIChatMessagesTableTableManager
                 Value<String> conversationId = const Value.absent(),
                 Value<String> role = const Value.absent(),
                 Value<String> content = const Value.absent(),
+                Value<String?> imageBase64 = const Value.absent(),
+                Value<String?> suggestionsJson = const Value.absent(),
                 Value<DateTime> timestamp = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AIChatMessagesCompanion(
@@ -4863,6 +5506,8 @@ class $$AIChatMessagesTableTableManager
                 conversationId: conversationId,
                 role: role,
                 content: content,
+                imageBase64: imageBase64,
+                suggestionsJson: suggestionsJson,
                 timestamp: timestamp,
                 rowid: rowid,
               ),
@@ -4872,6 +5517,8 @@ class $$AIChatMessagesTableTableManager
                 required String conversationId,
                 required String role,
                 required String content,
+                Value<String?> imageBase64 = const Value.absent(),
+                Value<String?> suggestionsJson = const Value.absent(),
                 Value<DateTime> timestamp = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AIChatMessagesCompanion.insert(
@@ -4879,6 +5526,8 @@ class $$AIChatMessagesTableTableManager
                 conversationId: conversationId,
                 role: role,
                 content: content,
+                imageBase64: imageBase64,
+                suggestionsJson: suggestionsJson,
                 timestamp: timestamp,
                 rowid: rowid,
               ),
@@ -4914,6 +5563,263 @@ typedef $$AIChatMessagesTableProcessedTableManager =
       AIChatMessage,
       PrefetchHooks Function()
     >;
+typedef $$SavedAnalysesTableCreateCompanionBuilder =
+    SavedAnalysesCompanion Function({
+      required String id,
+      required String conversationId,
+      required String title,
+      required String pythonCode,
+      required String analysisType,
+      Value<String?> parametersJson,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+typedef $$SavedAnalysesTableUpdateCompanionBuilder =
+    SavedAnalysesCompanion Function({
+      Value<String> id,
+      Value<String> conversationId,
+      Value<String> title,
+      Value<String> pythonCode,
+      Value<String> analysisType,
+      Value<String?> parametersJson,
+      Value<DateTime> createdAt,
+      Value<int> rowid,
+    });
+
+class $$SavedAnalysesTableFilterComposer
+    extends Composer<_$AppDatabase, $SavedAnalysesTable> {
+  $$SavedAnalysesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pythonCode => $composableBuilder(
+    column: $table.pythonCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get analysisType => $composableBuilder(
+    column: $table.analysisType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get parametersJson => $composableBuilder(
+    column: $table.parametersJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SavedAnalysesTableOrderingComposer
+    extends Composer<_$AppDatabase, $SavedAnalysesTable> {
+  $$SavedAnalysesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pythonCode => $composableBuilder(
+    column: $table.pythonCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get analysisType => $composableBuilder(
+    column: $table.analysisType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get parametersJson => $composableBuilder(
+    column: $table.parametersJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SavedAnalysesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SavedAnalysesTable> {
+  $$SavedAnalysesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get conversationId => $composableBuilder(
+    column: $table.conversationId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get pythonCode => $composableBuilder(
+    column: $table.pythonCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get analysisType => $composableBuilder(
+    column: $table.analysisType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get parametersJson => $composableBuilder(
+    column: $table.parametersJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$SavedAnalysesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SavedAnalysesTable,
+          SavedAnalyse,
+          $$SavedAnalysesTableFilterComposer,
+          $$SavedAnalysesTableOrderingComposer,
+          $$SavedAnalysesTableAnnotationComposer,
+          $$SavedAnalysesTableCreateCompanionBuilder,
+          $$SavedAnalysesTableUpdateCompanionBuilder,
+          (
+            SavedAnalyse,
+            BaseReferences<_$AppDatabase, $SavedAnalysesTable, SavedAnalyse>,
+          ),
+          SavedAnalyse,
+          PrefetchHooks Function()
+        > {
+  $$SavedAnalysesTableTableManager(_$AppDatabase db, $SavedAnalysesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer:
+              () => $$SavedAnalysesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer:
+              () =>
+                  $$SavedAnalysesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer:
+              () => $$SavedAnalysesTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> conversationId = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> pythonCode = const Value.absent(),
+                Value<String> analysisType = const Value.absent(),
+                Value<String?> parametersJson = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SavedAnalysesCompanion(
+                id: id,
+                conversationId: conversationId,
+                title: title,
+                pythonCode: pythonCode,
+                analysisType: analysisType,
+                parametersJson: parametersJson,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String conversationId,
+                required String title,
+                required String pythonCode,
+                required String analysisType,
+                Value<String?> parametersJson = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SavedAnalysesCompanion.insert(
+                id: id,
+                conversationId: conversationId,
+                title: title,
+                pythonCode: pythonCode,
+                analysisType: analysisType,
+                parametersJson: parametersJson,
+                createdAt: createdAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper:
+              (p0) =>
+                  p0
+                      .map(
+                        (e) => (
+                          e.readTable(table),
+                          BaseReferences(db, table, e),
+                        ),
+                      )
+                      .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SavedAnalysesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SavedAnalysesTable,
+      SavedAnalyse,
+      $$SavedAnalysesTableFilterComposer,
+      $$SavedAnalysesTableOrderingComposer,
+      $$SavedAnalysesTableAnnotationComposer,
+      $$SavedAnalysesTableCreateCompanionBuilder,
+      $$SavedAnalysesTableUpdateCompanionBuilder,
+      (
+        SavedAnalyse,
+        BaseReferences<_$AppDatabase, $SavedAnalysesTable, SavedAnalyse>,
+      ),
+      SavedAnalyse,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4932,4 +5838,6 @@ class $AppDatabaseManager {
       $$CredentialsTableTableManager(_db, _db.credentials);
   $$AIChatMessagesTableTableManager get aIChatMessages =>
       $$AIChatMessagesTableTableManager(_db, _db.aIChatMessages);
+  $$SavedAnalysesTableTableManager get savedAnalyses =>
+      $$SavedAnalysesTableTableManager(_db, _db.savedAnalyses);
 }

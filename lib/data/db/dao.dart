@@ -90,6 +90,8 @@ extension AppDatabaseDao on AppDatabase {
     required String conversationId,
     required String role, // 'user' or 'assistant'
     required String content,
+    String? imageBase64, // Base64-encoded image for visualizations
+    String? suggestionsJson, // JSON array of analysis suggestions
     DateTime? timestamp,
   }) async {
     await into(aIChatMessages).insert(
@@ -98,6 +100,8 @@ extension AppDatabaseDao on AppDatabase {
         conversationId: conversationId,
         role: role,
         content: content,
+        imageBase64: Value(imageBase64),
+        suggestionsJson: Value(suggestionsJson),
         timestamp: Value(timestamp ?? DateTime.now()),
       ),
       mode: InsertMode.replace,
@@ -498,5 +502,50 @@ extension AppDatabaseDao on AppDatabase {
 
   Future<void> deleteCredential(String key) async {
     await (delete(credentials)..where((t) => t.key.equals(key))).go();
+  }
+
+  // Saved Analyses
+  Future<void> saveAnalysis({
+    required String id,
+    required String conversationId,
+    required String title,
+    required String pythonCode,
+    required String analysisType,
+    String? parametersJson,
+  }) async {
+    await into(savedAnalyses).insert(
+      SavedAnalysesCompanion.insert(
+        id: id,
+        conversationId: conversationId,
+        title: title,
+        pythonCode: pythonCode,
+        analysisType: analysisType,
+        parametersJson: Value(parametersJson),
+      ),
+      mode: InsertMode.replace,
+    );
+  }
+
+  Future<List<SavedAnalyse>> getSavedAnalyses(String conversationId) async {
+    final rows =
+        await (select(savedAnalyses)
+              ..where((a) => a.conversationId.equals(conversationId))
+              ..orderBy([(a) => OrderingTerm.desc(a.createdAt)]))
+            .get();
+    return rows;
+  }
+
+  Future<SavedAnalyse?> getSavedAnalysis(String id) async {
+    return await (select(savedAnalyses)
+      ..where((a) => a.id.equals(id))).getSingleOrNull();
+  }
+
+  Future<void> deleteSavedAnalysis(String id) async {
+    await (delete(savedAnalyses)..where((a) => a.id.equals(id))).go();
+  }
+
+  Future<void> deleteSavedAnalysesByConversation(String conversationId) async {
+    await (delete(savedAnalyses)
+      ..where((a) => a.conversationId.equals(conversationId))).go();
   }
 }

@@ -9,6 +9,7 @@ import 'package:go_router/go_router.dart';
 import 'package:decision_agent/app/db_provider.dart';
 import 'package:decision_agent/app/auth_provider.dart';
 import 'package:decision_agent/data/db/dao.dart';
+import 'package:decision_agent/data/db/app_db.dart';
 import 'package:decision_agent/data/google/gmail_service.dart';
 import 'package:decision_agent/data/google/sheets_service.dart';
 import 'package:decision_agent/services/logging_service.dart';
@@ -16,12 +17,14 @@ import 'package:decision_agent/services/parsing_service.dart';
 import 'package:decision_agent/services/ingestion_service.dart';
 import 'package:decision_agent/services/request_service.dart';
 import 'package:decision_agent/services/ai_agent_service.dart';
+import 'package:decision_agent/services/visualization_service.dart';
 import 'package:decision_agent/features/settings/settings_controller.dart';
 import 'package:decision_agent/domain/email_protocol.dart';
 import 'package:googleapis/gmail/v1.dart' as gmail;
 import 'package:decision_agent/domain/models.dart' as models;
 import 'package:decision_agent/domain/request_schema.dart';
 import 'package:decision_agent/features/home/conversation_page.dart';
+import 'package:decision_agent/features/home/ai_chat_panel.dart';
 import 'package:decision_agent/utils/error_handling.dart';
 import 'package:decision_agent/utils/validation.dart';
 import 'dart:convert';
@@ -103,40 +106,42 @@ const int _activityLogsMaxLimit = 200;
 
 /// Provider for all activity logs across all requests in a conversation
 /// Loads initial batch of 50 logs
-final conversationActivityLogsProvider = FutureProvider.family<
-  List<models.ActivityLogEntry>,
-  String
->((ref, conversationId) async {
-  final db = ref.read(appDatabaseProvider);
-  final loggingService = LoggingService(db);
+final conversationActivityLogsProvider =
+    FutureProvider.family<List<models.ActivityLogEntry>, String>((
+      ref,
+      conversationId,
+    ) async {
+      final db = ref.read(appDatabaseProvider);
+      final loggingService = LoggingService(db);
 
-  // Get all requests for this conversation
-  final requests = await db.getRequestsByConversation(conversationId);
+      // Get all requests for this conversation
+      final requests = await db.getRequestsByConversation(conversationId);
 
-  if (requests.isEmpty) {
-    return [];
-  }
+      if (requests.isEmpty) {
+        return [];
+      }
 
-  // Get activity logs for all requests
-  // Limit per request to get ~50 total logs initially
-  final limitPerRequest =
-      (_activityLogsInitialLimit / requests.length).ceil().clamp(10, 100);
+      // Get activity logs for all requests
+      // Limit per request to get ~50 total logs initially
+      final limitPerRequest = (_activityLogsInitialLimit / requests.length)
+          .ceil()
+          .clamp(10, 100);
 
-  final allLogs = <models.ActivityLogEntry>[];
-  for (final request in requests) {
-    final logs = await loggingService.getActivityLogs(
-      request.requestId,
-      limit: limitPerRequest,
-    );
-    allLogs.addAll(logs);
-  }
+      final allLogs = <models.ActivityLogEntry>[];
+      for (final request in requests) {
+        final logs = await loggingService.getActivityLogs(
+          request.requestId,
+          limit: limitPerRequest,
+        );
+        allLogs.addAll(logs);
+      }
 
-  // Sort by timestamp (most recent first)
-  allLogs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      // Sort by timestamp (most recent first)
+      allLogs.sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-  // Limit to initial page size
-  return allLogs.take(_activityLogsInitialLimit).toList();
-});
+      // Limit to initial page size
+      return allLogs.take(_activityLogsInitialLimit).toList();
+    });
 
 class InspectorPanel extends ConsumerStatefulWidget {
   const InspectorPanel({super.key});
@@ -152,7 +157,7 @@ class _InspectorPanelState extends ConsumerState<InspectorPanel>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -251,6 +256,7 @@ class _InspectorPanelState extends ConsumerState<InspectorPanel>
               Tab(text: 'Participants'),
               Tab(text: 'Schema'),
               Tab(text: 'Activity'),
+              Tab(text: 'Analyses'),
             ],
           ),
           // Tab views
@@ -277,6 +283,7 @@ class _InspectorPanelState extends ConsumerState<InspectorPanel>
                         _ParticipantsTab(conversationId: selectedId),
                         _SchemaTab(conversationId: selectedId),
                         _ActivityTab(conversationId: selectedId),
+                        _AnalysesTab(conversationId: selectedId),
                       ],
                     ),
           ),
@@ -1981,10 +1988,7 @@ class _ActivityTabState extends ConsumerState<_ActivityTab> {
     });
   }
 
-  Future<void> _loadActivityLogs(
-    WidgetRef ref, {
-    bool append = true,
-  }) async {
+  Future<void> _loadActivityLogs(WidgetRef ref, {bool append = true}) async {
     if (_isLoadingMore) return;
 
     setState(() {
@@ -1997,7 +2001,9 @@ class _ActivityTabState extends ConsumerState<_ActivityTab> {
       final loggingService = LoggingService(db);
 
       // Get all requests for this conversation
-      final requests = await db.getRequestsByConversation(widget.conversationId);
+      final requests = await db.getRequestsByConversation(
+        widget.conversationId,
+      );
 
       if (requests.isEmpty) {
         setState(() {
@@ -2009,12 +2015,15 @@ class _ActivityTabState extends ConsumerState<_ActivityTab> {
       }
 
       // Calculate how many logs to fetch per request
-      final currentLimit = append
-          ? _loadedLogs.length + _activityLogsInitialLimit
-          : _activityLogsInitialLimit;
+      final currentLimit =
+          append
+              ? _loadedLogs.length + _activityLogsInitialLimit
+              : _activityLogsInitialLimit;
       final totalLimit = currentLimit.clamp(0, _activityLogsMaxLimit);
-      final limitPerRequest =
-          (totalLimit / requests.length).ceil().clamp(10, 100);
+      final limitPerRequest = (totalLimit / requests.length).ceil().clamp(
+        10,
+        100,
+      );
 
       final allLogs = <models.ActivityLogEntry>[];
       for (final request in requests) {
@@ -2043,7 +2052,8 @@ class _ActivityTabState extends ConsumerState<_ActivityTab> {
           _loadedLogs.clear();
           _loadedLogs.addAll(limitedLogs);
         }
-        _hasMore = limitedLogs.length >= totalLimit &&
+        _hasMore =
+            limitedLogs.length >= totalLimit &&
             totalLimit < _activityLogsMaxLimit;
         _isLoadingMore = false;
       });
@@ -2076,7 +2086,9 @@ class _ActivityTabState extends ConsumerState<_ActivityTab> {
             'No activity yet',
             style: TextStyle(
               color:
-                  Theme.of(context).textTheme.bodySmall?.color?.withOpacity(0.6) ??
+                  Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.color?.withOpacity(0.6) ??
                   Colors.grey[600],
               fontSize: 13,
             ),
@@ -2094,15 +2106,16 @@ class _ActivityTabState extends ConsumerState<_ActivityTab> {
           return Padding(
             padding: const EdgeInsets.all(16.0),
             child: Center(
-              child: _isLoadingMore
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton.icon(
-                      onPressed: () {
-                        _loadActivityLogs(ref, append: true);
-                      },
-                      icon: const Icon(Icons.expand_more),
-                      label: const Text('Load More Activity'),
-                    ),
+              child:
+                  _isLoadingMore
+                      ? const CircularProgressIndicator()
+                      : ElevatedButton.icon(
+                        onPressed: () {
+                          _loadActivityLogs(ref, append: true);
+                        },
+                        icon: const Icon(Icons.expand_more),
+                        label: const Text('Load More Activity'),
+                      ),
             ),
           );
         }
@@ -2397,6 +2410,7 @@ class _ActivityItem extends ConsumerWidget {
         loggingService,
       );
       final settingsController = SettingsController(db);
+      final visualizationService = ref.read(visualizationServiceProvider);
       final aiAgentService = AIAgentService(
         db,
         sheetsService,
@@ -2405,6 +2419,7 @@ class _ActivityItem extends ConsumerWidget {
         loggingService,
         settingsController,
         gmailService,
+        visualizationService,
       );
 
       // Unmark message as processed for both the old and new request IDs
@@ -2486,5 +2501,378 @@ class _ActivityItem extends ConsumerWidget {
 
   String _formatTime(DateTime date) {
     return '${date.month}/${date.day}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+}
+
+/// Analyses Tab: Saved visualizations and analyses
+class _AnalysesTab extends ConsumerWidget {
+  final String conversationId;
+
+  const _AnalysesTab({required this.conversationId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final savedAnalysesAsync = ref.watch(
+      _savedAnalysesProvider(conversationId),
+    );
+
+    return savedAnalysesAsync.when(
+      data: (analyses) {
+        if (analyses.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.insights_outlined,
+                    size: 64,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No Saved Analyses',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Analyses will appear here after you generate visualizations',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: analyses.length,
+          itemBuilder: (context, index) {
+            final analysis = analyses[index];
+            return _AnalysisCard(
+              analysis: analysis,
+              conversationId: conversationId,
+            );
+          },
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error:
+          (error, stack) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline, size: 64, color: Colors.red[300]),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error loading analyses',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red[700],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    ErrorHandler.getUserFriendlyMessage(error),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+    );
+  }
+}
+
+/// Provider for saved analyses
+final _savedAnalysesProvider =
+    FutureProvider.family<List<SavedAnalyse>, String>((
+      ref,
+      conversationId,
+    ) async {
+      final db = ref.read(appDatabaseProvider);
+      return await db.getSavedAnalyses(conversationId);
+    });
+
+/// Analysis Card Widget
+class _AnalysisCard extends ConsumerStatefulWidget {
+  final SavedAnalyse analysis;
+  final String conversationId;
+
+  const _AnalysisCard({required this.analysis, required this.conversationId});
+
+  @override
+  ConsumerState<_AnalysisCard> createState() => _AnalysisCardState();
+}
+
+class _AnalysisCardState extends ConsumerState<_AnalysisCard> {
+  bool _isRunning = false;
+
+  Future<void> _runAnalysis() async {
+    setState(() {
+      _isRunning = true;
+    });
+
+    try {
+      final aiAgent = ref.read(aiAgentServiceProvider);
+      final result = await aiAgent.runSavedAnalysis(
+        analysisId: widget.analysis.id,
+        conversationId: widget.conversationId,
+      );
+
+      if (mounted) {
+        if (result['success'] == true) {
+          // Show success and trigger chat message with visualization
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Visualization generated! Check the chat.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Invalidate chat messages to refresh
+          ref.invalidate(chatMessagesProvider(widget.conversationId));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                result['error'] as String? ?? 'Failed to run analysis',
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${ErrorHandler.getUserFriendlyMessage(e)}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isRunning = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _deleteAnalysis() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Delete Analysis'),
+            content: Text(
+              'Are you sure you want to delete "${widget.analysis.title}"?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: TextButton.styleFrom(foregroundColor: Colors.red),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final db = ref.read(appDatabaseProvider);
+        await db.deleteSavedAnalysis(widget.analysis.id);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Analysis deleted'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          // Refresh the list
+          ref.invalidate(_savedAnalysesProvider(widget.conversationId));
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error deleting: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  _getAnalysisIcon(widget.analysis.analysisType),
+                  color: _getAnalysisColor(widget.analysis.analysisType),
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.analysis.title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _getAnalysisTypeLabel(widget.analysis.analysisType),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+                PopupMenuButton(
+                  itemBuilder:
+                      (context) => [
+                        PopupMenuItem(
+                          child: const Row(
+                            children: [
+                              Icon(Icons.delete, size: 18),
+                              SizedBox(width: 8),
+                              Text('Delete'),
+                            ],
+                          ),
+                          onTap: () {
+                            Future.delayed(
+                              const Duration(milliseconds: 100),
+                              _deleteAnalysis,
+                            );
+                          },
+                        ),
+                      ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Text(
+                  'Created: ${_formatDate(widget.analysis.createdAt)}',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+                const Spacer(),
+                ElevatedButton.icon(
+                  onPressed: _isRunning ? null : _runAnalysis,
+                  icon:
+                      _isRunning
+                          ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                          : const Icon(Icons.play_arrow, size: 18),
+                  label: Text(_isRunning ? 'Running...' : 'Run'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _getAnalysisIcon(String analysisType) {
+    switch (analysisType.toLowerCase()) {
+      case 'trend':
+        return Icons.trending_up;
+      case 'distribution':
+        return Icons.bar_chart;
+      case 'correlation':
+        return Icons.scatter_plot;
+      case 'summary':
+        return Icons.summarize;
+      default:
+        return Icons.insights;
+    }
+  }
+
+  Color _getAnalysisColor(String analysisType) {
+    switch (analysisType.toLowerCase()) {
+      case 'trend':
+        return Colors.blue;
+      case 'distribution':
+        return Colors.green;
+      case 'correlation':
+        return Colors.orange;
+      case 'summary':
+        return Colors.purple;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _getAnalysisTypeLabel(String analysisType) {
+    switch (analysisType.toLowerCase()) {
+      case 'trend':
+        return 'Trend Analysis';
+      case 'distribution':
+        return 'Distribution Chart';
+      case 'correlation':
+        return 'Correlation Matrix';
+      case 'summary':
+        return 'Summary Statistics';
+      default:
+        return 'Custom Analysis';
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return 'Today';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else {
+      return '${date.month}/${date.day}/${date.year}';
+    }
   }
 }
