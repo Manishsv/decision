@@ -112,6 +112,8 @@ class _AIChatPanelState extends ConsumerState<AIChatPanel> {
   bool _isMerging = false; // Guard flag to prevent infinite loop
   DateTime?
   _lastMergeTime; // Track when we last merged to prevent rapid re-merges
+  bool _hasSentIntroduction =
+      false; // Guard flag to prevent duplicate introductions
 
   @override
   void initState() {
@@ -132,6 +134,9 @@ class _AIChatPanelState extends ConsumerState<AIChatPanel> {
   void _loadMessages() {
     final selectedId = ref.read(selectedConversationIdProvider);
     if (selectedId != null) {
+      // Reset introduction flag when conversation changes
+      _hasSentIntroduction = false;
+
       // Clear local messages first to ensure clean reload
       setState(() {
         _localMessages = [];
@@ -178,7 +183,8 @@ class _AIChatPanelState extends ConsumerState<AIChatPanel> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _scrollToBottom();
             // Auto-introduce if this is a new conversation with no messages
-            if (messages.isEmpty) {
+            // Only send if we haven't already sent an introduction for this conversation
+            if (messages.isEmpty && !_hasSentIntroduction) {
               _sendAutoIntroduction();
             }
           });
@@ -188,17 +194,32 @@ class _AIChatPanelState extends ConsumerState<AIChatPanel> {
       setState(() {
         _localMessages = [];
       });
+      _hasSentIntroduction = false;
     }
   }
 
   Future<void> _sendAutoIntroduction() async {
     if (!mounted) return;
 
+    // Prevent duplicate introductions
+    if (_hasSentIntroduction) {
+      debugPrint('⚠️ Introduction already sent, skipping duplicate');
+      return;
+    }
+
     final selectedId = ref.read(selectedConversationIdProvider);
     if (selectedId == null) return;
 
-    if (!mounted) return;
+    // Check if introduction already exists in database
     final db = ref.read(appDatabaseProvider);
+    final existingMessages = await db.getAIChatMessages(selectedId);
+    if (existingMessages.isNotEmpty) {
+      debugPrint(
+        '⚠️ Messages already exist in conversation, skipping introduction',
+      );
+      _hasSentIntroduction = true;
+      return;
+    }
 
     if (!mounted) return;
     final conversations = await db.getConversations(includeArchived: true);
@@ -209,8 +230,11 @@ class _AIChatPanelState extends ConsumerState<AIChatPanel> {
       orElse: () => throw Exception('Conversation not found'),
     );
 
+    // Mark as sent before proceeding
+    _hasSentIntroduction = true;
+
     final introductionMessage =
-        '''Hello! I'm your AI assistant for DIGIT Decision. I'm here to help you manage structured data requests via email.
+        '''Hello! I'm your AI assistant for DIGIT Decision. I'm here to help you manage structured data requests via email and analyze your collected data.
 
 Here's what I can help you with:
 
@@ -224,18 +248,25 @@ Here's what I can help you with:
 - Track who has responded and who hasn't
 - Send reminders to pending participants
 - Monitor response status
+- View collected data in real-time
 
-📉 **Data Analysis**
-- Analyze collected data
-- Provide insights and trends
+📉 **Data Analysis & Visualization**
+- Analyze collected data from Google Sheets
+- Generate interactive charts and visualizations
+- Suggest analyses based on your data
+- Create trend analysis, distributions, and summaries
 - Answer questions about your data
+- All visualizations are saved and persist across sessions
 
 I can guide you through the entire process step by step. Just tell me what you'd like to do!
 
 For example, you can say:
 - "I want to collect monthly finance data from 50 local bodies"
 - "Set up a new data collection for program progress"
-- "Help me create a request for participant information"
+- "Show me revenue trends over time"
+- "Generate a visualization comparing expenses by program"
+- "Analyze the data and suggest insights"
+- "Create a chart showing monthly trends"
 
 What would you like to start with?''';
 
@@ -266,7 +297,7 @@ What would you like to start with?''';
 
     if (!mounted) return;
 
-    // Invalidate provider
+    // Invalidate provider to trigger reload (but guard flag prevents duplicate)
     ref.invalidate(chatMessagesProvider(selectedId));
 
     if (mounted) {
@@ -659,23 +690,26 @@ What would you like to start with?''';
         setState(() {
           // Simple merge: preserve local messages with images, use DB for others
           final mergedMessages = <AIMessage>[];
-          final localMessagesByTimestamp = <int, AIMessage>{};
 
-          // Index local messages by timestamp for quick lookup
+          // Index local messages by content+timestamp+role for quick lookup
+          // This provides more reliable deduplication than timestamp alone
+          final localMessagesByKey = <String, AIMessage>{};
           for (var msg in _localMessages) {
-            final key = msg.timestamp.millisecondsSinceEpoch;
             // Only keep local message if it has imageBase64, suggestions, or savedAnalysisId
             if (msg.imageBase64 != null ||
                 msg.suggestions != null ||
                 msg.savedAnalysisId != null) {
-              localMessagesByTimestamp[key] = msg;
+              // Use content + role + timestamp as key for reliable deduplication
+              final key = '${msg.role}|${msg.timestamp.millisecondsSinceEpoch}|${msg.content.substring(0, msg.content.length.clamp(0, 100))}';
+              localMessagesByKey[key] = msg;
             }
           }
 
           // Process DB messages - prefer DB messages if they have special data (from persisted storage)
           for (var dbMsg in messages) {
-            final key = dbMsg.timestamp.millisecondsSinceEpoch;
-            final localMsg = localMessagesByTimestamp[key];
+            // Use content + role + timestamp as key for reliable deduplication
+            final key = '${dbMsg.role}|${dbMsg.timestamp.millisecondsSinceEpoch}|${dbMsg.content.substring(0, dbMsg.content.length.clamp(0, 100))}';
+            final localMsg = localMessagesByKey[key];
 
             if (localMsg != null) {
               // Prefer DB message if it has special data (persisted), otherwise use local
@@ -706,12 +740,16 @@ What would you like to start with?''';
           }
 
           // Add any local messages not in DB yet (newly added)
+          // Use content + timestamp + role for more reliable deduplication
           for (var localMsg in _localMessages) {
-            if (!mergedMessages.any(
+            final isDuplicate = mergedMessages.any(
               (m) =>
                   m.timestamp.millisecondsSinceEpoch ==
-                  localMsg.timestamp.millisecondsSinceEpoch,
-            )) {
+                      localMsg.timestamp.millisecondsSinceEpoch &&
+                  m.content == localMsg.content &&
+                  m.role == localMsg.role,
+            );
+            if (!isDuplicate) {
               mergedMessages.add(localMsg);
             }
           }
